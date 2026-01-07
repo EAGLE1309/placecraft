@@ -1,0 +1,1 @@
+This project is a base dashboard layout for a two role system (admin and users).
