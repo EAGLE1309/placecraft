@@ -52,6 +52,7 @@ export default function AdminDrivesPage() {
     preferredSkills: "",
     applicationDeadline: "",
   });
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDrives();
@@ -68,18 +69,45 @@ export default function AdminDrivesPage() {
     }
   };
 
+  const validateForm = (): string | null => {
+    if (!formData.company.trim()) return "Company name is required";
+    if (!formData.role.trim()) return "Role/Position is required";
+    if (!formData.description.trim()) return "Description is required";
+    if (!formData.location.trim()) return "Location is required";
+    if (formData.type === "fulltime" && !formData.ctc.trim()) return "CTC is required for full-time positions";
+    if (formData.type === "internship" && !formData.stipend.trim()) return "Stipend is required for internships";
+    if (formData.branches.length === 0) return "Please select at least one eligible branch";
+    if (formData.batches.length === 0) return "Please select at least one eligible batch";
+    if (!formData.applicationDeadline) return "Application deadline is required";
+
+    // Validate deadline is in the future
+    const deadline = new Date(formData.applicationDeadline);
+    if (deadline <= new Date()) return "Application deadline must be in the future";
+
+    return null;
+  };
+
   const handleCreateDrive = async () => {
+    setFormError(null);
+
+    // Validate form
+    const validationError = validateForm();
+    if (validationError) {
+      setFormError(validationError);
+      return;
+    }
+
     setCreating(true);
     try {
       const driveData = {
-        company: formData.company,
-        role: formData.role,
-        description: formData.description,
+        company: formData.company.trim(),
+        role: formData.role.trim(),
+        description: formData.description.trim(),
         type: formData.type,
-        location: formData.location,
-        ctc: formData.type === "fulltime" ? formData.ctc : undefined,
-        stipend: formData.type === "internship" ? formData.stipend : undefined,
-        duration: formData.type === "internship" ? formData.duration : undefined,
+        location: formData.location.trim(),
+        ctc: formData.type === "fulltime" ? formData.ctc.trim() : undefined,
+        stipend: formData.type === "internship" ? formData.stipend.trim() : undefined,
+        duration: formData.type === "internship" ? formData.duration.trim() : undefined,
         eligibility: {
           branches: formData.branches,
           minCgpa: formData.minCgpa,
@@ -97,6 +125,7 @@ export default function AdminDrivesPage() {
       resetForm();
     } catch (error) {
       console.error("Failed to create drive:", error);
+      setFormError(error instanceof Error ? error.message : "Failed to create drive. Please try again.");
     } finally {
       setCreating(false);
     }
@@ -128,6 +157,7 @@ export default function AdminDrivesPage() {
       preferredSkills: "",
       applicationDeadline: "",
     });
+    setFormError(null);
   };
 
   const filteredDrives = drives.filter((drive) => {
@@ -292,6 +322,12 @@ export default function AdminDrivesPage() {
               Create a new placement drive for students to apply
             </DialogDescription>
           </DialogHeader>
+
+          {formError && (
+            <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 rounded-md border border-red-200 dark:border-red-800">
+              {formError}
+            </div>
+          )}
 
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">

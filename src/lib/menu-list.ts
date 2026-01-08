@@ -9,7 +9,9 @@ import {
   Building2,
   BookOpen,
   ClipboardList,
-  Settings
+  Settings,
+  History,
+  Sparkles
 } from "lucide-react";
 import { UserRole } from "@/lib/firebase/auth";
 
@@ -64,14 +66,31 @@ function getStudentMenuList(pathname: string): Group[] {
       ]
     },
     {
-      groupLabel: "Profile",
+      groupLabel: "Resume",
       menus: [
         {
           href: "/student/resume",
-          label: "Resume",
+          label: "Resume Analysis",
           icon: FileText,
-          active: pathname.includes("/student/resume"),
+          active: pathname === "/student/resume",
         },
+        {
+          href: "/student/resume/history",
+          label: "Resume History",
+          icon: History,
+          active: pathname.includes("/student/resume/history"),
+        },
+        {
+          href: "/student/resume/improve",
+          label: "Improve Resume",
+          icon: Sparkles,
+          active: pathname.includes("/student/resume/improve"),
+        }
+      ]
+    },
+    {
+      groupLabel: "Profile",
+      menus: [
         {
           href: "/student/profile",
           label: "My Profile",

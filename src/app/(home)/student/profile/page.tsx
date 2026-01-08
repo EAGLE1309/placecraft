@@ -31,10 +31,11 @@ import {
 import { v4 as uuidv4 } from "uuid";
 
 export default function StudentProfilePage() {
-  const { profile, refreshProfile } = useAuth();
+  const { profile, refreshProfile, loading: authLoading } = useAuth();
   const studentProfile = profile as StudentProfile | null;
 
   const [loading, setLoading] = useState(false);
+  const [initialDataLoaded, setInitialDataLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState<"basic" | "skills" | "experience" | "projects">("basic");
   const [formData, setFormData] = useState({
     name: "",
@@ -48,22 +49,36 @@ export default function StudentProfilePage() {
   const [newSkill, setNewSkill] = useState("");
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
 
+  // Sync form data with Firebase profile data
   useEffect(() => {
-    if (studentProfile) {
+    if (studentProfile && !initialDataLoaded) {
       setFormData({
-        name: studentProfile.name,
-        phone: studentProfile.phone,
-        college: studentProfile.college,
-        branch: studentProfile.branch,
-        graduationYear: studentProfile.graduationYear,
+        name: studentProfile.name || "",
+        phone: studentProfile.phone || "",
+        college: studentProfile.college || "",
+        branch: studentProfile.branch || "",
+        graduationYear: studentProfile.graduationYear || 2025,
         cgpa: studentProfile.cgpa?.toString() || "",
       });
       setSkills(studentProfile.skills || []);
       setExperiences(studentProfile.experience || []);
       setProjects(studentProfile.projects || []);
+      setInitialDataLoaded(true);
     }
-  }, [studentProfile]);
+  }, [studentProfile, initialDataLoaded]);
+
+  // Re-sync when profile is refreshed (after save) - using updatedAt as trigger
+  useEffect(() => {
+    if (studentProfile && initialDataLoaded) {
+      // Update local state with fresh data from Firebase after save
+      setSkills(studentProfile.skills || []);
+      setExperiences(studentProfile.experience || []);
+      setProjects(studentProfile.projects || []);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studentProfile?.updatedAt]);
 
   const handleBasicSave = async () => {
     if (!studentProfile) return;

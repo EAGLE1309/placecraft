@@ -3,27 +3,25 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { createStudent, updateStudent, getStudentByUid } from "@/lib/firebase/firestore";
+import { createRecruiter, updateRecruiter, getRecruiterByUid } from "@/lib/firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
-import { COLLEGES, GRADUATION_YEARS } from "@/lib/constants";
-import { BRANCHES, StudentProfile } from "@/types";
-import { GraduationCap, ChevronRight, ChevronLeft, Check } from "lucide-react";
+import { RecruiterProfile } from "@/types";
+import { Building2, ChevronRight, ChevronLeft, Check, Briefcase } from "lucide-react";
 
 interface FormData {
   name: string;
   phone: string;
-  college: string;
-  branch: string;
-  graduationYear: number;
-  cgpa: string;
+  company: string;
+  designation: string;
+  companyDescription: string;
 }
 
-export default function StudentOnboardingPage() {
+export default function RecruiterOnboardingPage() {
   const { user, loading: authLoading, role, profile, refreshProfile } = useAuth();
   const router = useRouter();
   const [step, setStep] = useState(1);
@@ -32,15 +30,14 @@ export default function StudentOnboardingPage() {
   const [formData, setFormData] = useState<FormData>({
     name: "",
     phone: "",
-    college: "",
-    branch: "",
-    graduationYear: GRADUATION_YEARS[1],
-    cgpa: "",
+    company: "",
+    designation: "",
+    companyDescription: "",
   });
 
   useEffect(() => {
     if (!authLoading) {
-      if (!user || role !== "student") {
+      if (!user || role !== "recruiter") {
         router.push("/login");
         return;
       }
@@ -48,15 +45,15 @@ export default function StudentOnboardingPage() {
       if (user.displayName && !formData.name) {
         setFormData((prev) => ({ ...prev, name: user.displayName || "" }));
       }
-      // If already onboarded, redirect to dashboard
-      const studentProfile = profile as StudentProfile | null;
-      if (studentProfile?.onboardingComplete) {
-        router.push("/student");
+      // If already has profile with company info, redirect to dashboard
+      const recruiterProfile = profile as RecruiterProfile | null;
+      if (recruiterProfile?.company) {
+        router.push("/recruiter");
       }
     }
   }, [user, authLoading, role, profile, router, formData.name]);
 
-  const handleChange = (field: keyof FormData, value: string | number) => {
+  const handleChange = (field: keyof FormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setError(null);
   };
@@ -74,12 +71,12 @@ export default function StudentOnboardingPage() {
         }
         return true;
       case 2:
-        if (!formData.college) {
-          setError("Please select your college");
+        if (!formData.company.trim()) {
+          setError("Please enter your company name");
           return false;
         }
-        if (!formData.branch) {
-          setError("Please select your branch");
+        if (!formData.designation.trim()) {
+          setError("Please enter your designation");
           return false;
         }
         return true;
@@ -108,34 +105,25 @@ export default function StudentOnboardingPage() {
     setError(null);
 
     try {
-      const existingProfile = await getStudentByUid(user.uid);
-      const cgpaValue = formData.cgpa ? parseFloat(formData.cgpa) : undefined;
+      const existingProfile = await getRecruiterByUid(user.uid);
 
       if (existingProfile) {
-        await updateStudent(existingProfile.id, {
+        await updateRecruiter(existingProfile.id, {
           name: formData.name,
           phone: formData.phone,
-          college: formData.college,
-          branch: formData.branch,
-          graduationYear: formData.graduationYear,
-          cgpa: cgpaValue,
-          profileComplete: true,
-          onboardingComplete: true,
+          company: formData.company,
+          designation: formData.designation,
         });
       } else {
-        await createStudent(user.uid, user.email || "", formData.name, {
+        await createRecruiter(user.uid, user.email || "", formData.name, {
           phone: formData.phone,
-          college: formData.college,
-          branch: formData.branch,
-          graduationYear: formData.graduationYear,
-          cgpa: cgpaValue,
-          profileComplete: true,
-          onboardingComplete: true,
+          company: formData.company,
+          designation: formData.designation,
         });
       }
 
       await refreshProfile();
-      router.push("/student");
+      router.push("/recruiter");
     } catch (err) {
       console.error("Onboarding error:", err);
       setError("Failed to save profile. Please try again.");
@@ -153,22 +141,22 @@ export default function StudentOnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-zinc-900 dark:to-zinc-800 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-indigo-100 dark:from-zinc-900 dark:to-zinc-800 p-4">
       <Card className="w-full max-w-lg shadow-xl">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-            <GraduationCap className="size-8 text-white" />
+          <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
+            <Building2 className="size-8 text-white" />
           </div>
           <CardTitle className="text-2xl">Complete Your Profile</CardTitle>
           <CardDescription>
-            Step {step} of 3 - {step === 1 ? "Personal Details" : step === 2 ? "Academic Info" : "Review"}
+            Step {step} of 3 - {step === 1 ? "Personal Details" : step === 2 ? "Company Info" : "Review"}
           </CardDescription>
           {/* Progress bar */}
           <div className="flex gap-2 mt-4">
             {[1, 2, 3].map((s) => (
               <div
                 key={s}
-                className={`h-2 flex-1 rounded-full transition-colors ${s <= step ? "bg-blue-600" : "bg-gray-200 dark:bg-gray-700"
+                className={`h-2 flex-1 rounded-full transition-colors ${s <= step ? "bg-purple-600" : "bg-gray-200 dark:bg-gray-700"
                   }`}
               />
             ))}
@@ -205,71 +193,36 @@ export default function StudentOnboardingPage() {
             </div>
           )}
 
-          {/* Step 2: Academic Info */}
+          {/* Step 2: Company Info */}
           {step === 2 && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>College</Label>
-                <Select value={formData.college} onValueChange={(v) => handleChange("college", v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select your college" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {COLLEGES.map((college) => (
-                      <SelectItem key={college} value={college}>
-                        {college}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="company">Company Name</Label>
+                <Input
+                  id="company"
+                  placeholder="Enter your company name"
+                  value={formData.company}
+                  onChange={(e) => handleChange("company", e.target.value)}
+                />
               </div>
               <div className="space-y-2">
-                <Label>Branch</Label>
-                <Select value={formData.branch} onValueChange={(v) => handleChange("branch", v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select your branch" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {BRANCHES.map((branch) => (
-                      <SelectItem key={branch} value={branch}>
-                        {branch}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="designation">Your Designation</Label>
+                <Input
+                  id="designation"
+                  placeholder="e.g., HR Manager, Technical Recruiter"
+                  value={formData.designation}
+                  onChange={(e) => handleChange("designation", e.target.value)}
+                />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Graduation Year</Label>
-                  <Select
-                    value={formData.graduationYear.toString()}
-                    onValueChange={(v) => handleChange("graduationYear", parseInt(v))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Year" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {GRADUATION_YEARS.map((year) => (
-                        <SelectItem key={year} value={year.toString()}>
-                          {year}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cgpa">CGPA (Optional)</Label>
-                  <Input
-                    id="cgpa"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="10"
-                    placeholder="e.g., 8.5"
-                    value={formData.cgpa}
-                    onChange={(e) => handleChange("cgpa", e.target.value)}
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="companyDescription">Company Description (Optional)</Label>
+                <Textarea
+                  id="companyDescription"
+                  placeholder="Brief description of your company..."
+                  value={formData.companyDescription}
+                  onChange={(e) => handleChange("companyDescription", e.target.value)}
+                  rows={3}
+                />
               </div>
             </div>
           )}
@@ -287,38 +240,28 @@ export default function StudentOnboardingPage() {
                   <span className="font-medium">{formData.phone}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">College</span>
-                  <span className="font-medium">{formData.college}</span>
+                  <span className="text-muted-foreground">Company</span>
+                  <span className="font-medium">{formData.company}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Branch</span>
-                  <span className="font-medium">{formData.branch}</span>
+                  <span className="text-muted-foreground">Designation</span>
+                  <span className="font-medium">{formData.designation}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Graduation Year</span>
-                  <span className="font-medium">{formData.graduationYear}</span>
-                </div>
-                {formData.cgpa && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">CGPA</span>
-                    <span className="font-medium">{formData.cgpa}</span>
-                  </div>
-                )}
               </div>
               <p className="text-sm text-muted-foreground text-center">
                 You can update these details later from your profile.
               </p>
 
-              {/* Resume Generation Prompt */}
-              <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              {/* What you can do prompt */}
+              <div className="mt-6 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
                 <div className="flex items-start gap-3">
-                  <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center shrink-0">
-                    <GraduationCap className="size-5 text-blue-600" />
+                  <div className="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center shrink-0">
+                    <Briefcase className="size-5 text-purple-600" />
                   </div>
                   <div>
-                    <h4 className="font-medium text-blue-800 dark:text-blue-200">Don&apos;t have a resume yet?</h4>
-                    <p className="text-sm text-blue-600 dark:text-blue-300 mt-1">
-                      No worries! After completing setup, you can use our AI-powered resume builder to create a professional resume from scratch.
+                    <h4 className="font-medium text-purple-800 dark:text-purple-200">Ready to hire?</h4>
+                    <p className="text-sm text-purple-600 dark:text-purple-300 mt-1">
+                      After completing setup, you can post placement drives, review applications, and connect with talented students.
                     </p>
                   </div>
                 </div>
@@ -335,7 +278,7 @@ export default function StudentOnboardingPage() {
               </Button>
             )}
             {step < 3 ? (
-              <Button onClick={handleNext} className="flex-1 bg-blue-600 hover:bg-blue-700">
+              <Button onClick={handleNext} className="flex-1 bg-purple-600 hover:bg-purple-700">
                 Next
                 <ChevronRight className="size-4 ml-1" />
               </Button>

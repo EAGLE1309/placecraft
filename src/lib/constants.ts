@@ -5,7 +5,7 @@ export const ALLOWED_ADMIN_EMAILS: string[] = [
 ];
 
 export const ALLOWED_RECRUITER_EMAILS: string[] = [
-  // Add recruiter emails here
+  "eaglemcraft@gmail.com"
 ];
 
 // Students can sign up with any email (will need to complete onboarding)

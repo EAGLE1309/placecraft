@@ -36,11 +36,13 @@ export default function RecruiterDashboardPage() {
   const [stats, setStats] = useState<RecruiterDashboardStats | null>(null);
   const [drives, setDrives] = useState<PlacementDrive[]>([]);
   const [recentApplications, setRecentApplications] = useState<ApplicationWithStudent[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
       if (!recruiterProfile) return;
+
+      setLoading(true);
 
       try {
         const [statsData, drivesData] = await Promise.all([
