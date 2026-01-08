@@ -258,7 +258,7 @@ export default function StudentOnboardingPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="cgpa">CGPA (Optional)</Label>
+                  <Label htmlFor="cgpa">CGPA</Label>
                   <Input
                     id="cgpa"
                     type="number"
