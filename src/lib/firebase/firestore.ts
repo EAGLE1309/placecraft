@@ -366,11 +366,12 @@ export async function updateApplicationStatus(
   if (!application) throw new Error("Application not found");
 
   const now = Timestamp.now();
+  // Only include notes if defined to avoid Firestore undefined field error
   const statusChange = {
     status,
     changedBy,
     changedAt: now,
-    notes,
+    ...(notes !== undefined && { notes }),
   };
 
   await updateDoc(doc(getDb(), COLLECTIONS.APPLICATIONS, id), {

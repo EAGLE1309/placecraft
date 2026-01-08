@@ -200,14 +200,21 @@ export default function StudentDashboardPage() {
                           <p className="text-sm text-muted-foreground">{drive.company}</p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <Badge variant={drive.type === "fulltime" ? "default" : "secondary"}>
-                          {drive.type === "fulltime" ? "Full-time" : "Internship"}
-                        </Badge>
-                        <p className="text-xs text-muted-foreground mt-1 flex items-center justify-end">
-                          <Calendar className="size-3 mr-1" />
-                          {drive.applicationDeadline.toDate().toLocaleDateString()}
-                        </p>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <Badge variant={drive.type === "fulltime" ? "default" : "secondary"}>
+                            {drive.type === "fulltime" ? "Full-time" : "Internship"}
+                          </Badge>
+                          <p className="text-xs text-muted-foreground mt-1 flex items-center justify-end">
+                            <Calendar className="size-3 mr-1" />
+                            {drive.applicationDeadline.toDate().toLocaleDateString()}
+                          </p>
+                        </div>
+                        <Link href={`/student/drives?driveId=${drive.id}`}>
+                          <Button size="sm" variant="outline">
+                            Apply
+                          </Button>
+                        </Link>
                       </div>
                     </div>
                   ))}

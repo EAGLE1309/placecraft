@@ -8,11 +8,12 @@ import { Spinner } from "@/components/ui/spinner";
 import { StudentProfile } from "@/types";
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading, isAuthorized, role, profile } = useAuth();
+  const { user, loading, isAuthorized, role, profile, profileLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading) {
+    // Wait for both auth and profile to finish loading
+    if (!loading && !profileLoading) {
       if (!user || !isAuthorized) {
         router.push("/login");
         return;
@@ -23,15 +24,16 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
         else router.push("/login");
         return;
       }
-      // Check if student needs onboarding
+      // Check if student needs onboarding - only after profile is loaded
       const studentProfile = profile as StudentProfile | null;
       if (!studentProfile || !studentProfile.onboardingComplete) {
         router.push("/student/onboarding");
       }
     }
-  }, [user, loading, isAuthorized, role, profile, router]);
+  }, [user, loading, isAuthorized, role, profile, profileLoading, router]);
 
-  if (loading) {
+  // Show spinner while auth OR profile is loading
+  if (loading || profileLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Spinner className="size-8" />

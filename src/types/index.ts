@@ -33,6 +33,10 @@ export interface StudentProfile {
   resumeScore?: number;
   atsScore?: number;
   finalResumeId?: string; // ID of the resume selected as final (for admins/recruiters)
+  // Extracted data from AI resume analysis (separate from user-curated data)
+  resumeExtractedSkills?: string[];
+  resumeExtractedEducation?: ExtractedEducation[];
+  resumeExtractedExperience?: ExtractedExperience[];
   profileComplete: boolean;
   onboardingComplete: boolean;
   createdAt: Timestamp;
@@ -59,6 +63,19 @@ export interface Experience {
   endDate?: string;
   current: boolean;
   skills: string[];
+}
+
+// Extracted data from AI resume analysis (simplified structure without IDs)
+export interface ExtractedEducation {
+  institution: string;
+  degree: string;
+  year: string;
+}
+
+export interface ExtractedExperience {
+  company: string;
+  role: string;
+  duration: string;
 }
 
 export interface Project {

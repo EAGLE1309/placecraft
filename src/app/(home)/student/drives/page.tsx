@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { useSearchParams } from "next/navigation";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,8 @@ import {
 export default function StudentDrivesPage() {
   const { profile, refreshProfile } = useAuth();
   const studentProfile = profile as StudentProfile | null;
+  const searchParams = useSearchParams();
+  const driveIdFromUrl = searchParams.get("driveId");
 
   const [drives, setDrives] = useState<PlacementDrive[]>([]);
   const [filteredDrives, setFilteredDrives] = useState<PlacementDrive[]>([]);
@@ -64,6 +67,14 @@ export default function StudentDrivesPage() {
           if (hasApplied) applied.add(drive.id);
         }
         setAppliedDrives(applied);
+
+        // Auto-open dialog if driveId is in URL query params
+        if (driveIdFromUrl) {
+          const driveToOpen = eligibleDrives.find((d) => d.id === driveIdFromUrl);
+          if (driveToOpen && !applied.has(driveIdFromUrl)) {
+            setSelectedDrive(driveToOpen);
+          }
+        }
       } catch (error) {
         console.error("Failed to fetch drives:", error);
       } finally {
@@ -72,7 +83,7 @@ export default function StudentDrivesPage() {
     }
 
     fetchDrives();
-  }, [studentProfile]);
+  }, [studentProfile, driveIdFromUrl]);
 
   useEffect(() => {
     let filtered = drives;

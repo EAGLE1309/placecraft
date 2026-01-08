@@ -11,7 +11,9 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [role, setRole] = useState<UserRole>(null);
-  const [profile, setProfile] = useState<StudentProfile | RecruiterProfile | null>(null);
+  // Tri-state: undefined = still loading, null = no profile found, object = profile loaded
+  const [profile, setProfile] = useState<StudentProfile | RecruiterProfile | null | undefined>(undefined);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onTokenChange(async (firebaseUser: User | null) => {
@@ -30,17 +32,26 @@ export function useAuth() {
 
         // Fetch profile based on role
         if (authorized && userRole) {
+          setProfileLoading(true);
           try {
             if (userRole === "student") {
               const studentProfile = await getStudentByUid(firebaseUser.uid);
-              setProfile(studentProfile);
+              setProfile(studentProfile); // null if not found, object if found
             } else if (userRole === "recruiter") {
               const recruiterProfile = await getRecruiterByUid(firebaseUser.uid);
-              setProfile(recruiterProfile);
+              setProfile(recruiterProfile); // null if not found, object if found
+            } else {
+              setProfile(null); // admin or other roles
             }
           } catch (error) {
             console.error("Failed to fetch profile:", error);
+            setProfile(null);
+          } finally {
+            setProfileLoading(false);
           }
+        } else {
+          setProfile(null);
+          setProfileLoading(false);
         }
 
         // Sync session cookie with Firebase auth state
@@ -57,6 +68,7 @@ export function useAuth() {
         setIsAuthorized(false);
         setRole(null);
         setProfile(null);
+        setProfileLoading(false);
         clearSessionCookie();
       }
       setLoading(false);
@@ -81,5 +93,5 @@ export function useAuth() {
     }
   };
 
-  return { user, loading, isAuthorized, role, profile, refreshProfile };
+  return { user, loading, isAuthorized, role, profile, profileLoading, refreshProfile };
 }

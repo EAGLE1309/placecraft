@@ -120,11 +120,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Update student profile with analysis results
+    // Store extracted data separately - do NOT overwrite user-curated skills
     try {
       await updateStudent(studentId, {
         resumeScore: analysis.overallScore,
         atsScore: analysis.atsScore,
-        skills: analysis.skills,
+        // Store extracted data in separate fields to preserve user-curated data
+        resumeExtractedSkills: analysis.skills,
+        resumeExtractedEducation: analysis.education,
+        resumeExtractedExperience: analysis.experience,
       });
 
       // Save learning suggestions to Firestore
