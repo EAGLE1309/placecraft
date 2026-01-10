@@ -35,6 +35,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { toDate } from "@/lib/utils";
 
 export default function StudentDrivesPage() {
   const { profile, refreshProfile } = useAuth();
@@ -201,7 +202,7 @@ export default function StudentDrivesPage() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredDrives.map((drive) => {
               const hasApplied = appliedDrives.has(drive.id);
-              const deadline = drive.applicationDeadline.toDate();
+              const deadline = toDate(drive.applicationDeadline);
               const isUrgent = deadline.getTime() - Date.now() < 3 * 24 * 60 * 60 * 1000;
 
               return (
@@ -314,7 +315,7 @@ export default function StudentDrivesPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Calendar className="size-4 text-muted-foreground" />
-                    <span>Deadline: {selectedDrive.applicationDeadline.toDate().toLocaleDateString()}</span>
+                    <span>Deadline: {toDate(selectedDrive.applicationDeadline).toLocaleDateString()}</span>
                   </div>
                   {selectedDrive.duration && (
                     <div className="flex items-center gap-2">

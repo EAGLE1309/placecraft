@@ -65,17 +65,27 @@ export interface Experience {
   skills: string[];
 }
 
-// Extracted data from AI resume analysis (simplified structure without IDs)
+// Extracted data from AI resume analysis (stored in student profile for merging)
 export interface ExtractedEducation {
+  id: string;
   institution: string;
   degree: string;
-  year: string;
+  field: string;
+  startYear: number;
+  endYear?: number;
+  grade?: string;
+  current: boolean;
 }
 
 export interface ExtractedExperience {
+  id: string;
   company: string;
   role: string;
-  duration: string;
+  description: string;
+  startDate: string;
+  endDate?: string;
+  current: boolean;
+  skills: string[];
 }
 
 export interface Project {

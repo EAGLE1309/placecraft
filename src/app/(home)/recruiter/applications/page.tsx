@@ -126,7 +126,7 @@ export default function RecruiterApplicationsPage() {
             <SelectContent>
               <SelectItem value="all">All Drives</SelectItem>
               {drives.map((drive) => (
-                <SelectItem key={drive.id} value={drive.id}>
+                <SelectItem key={String(drive.id)} value={drive.id}>
                   {drive.role}
                 </SelectItem>
               ))}
@@ -172,16 +172,16 @@ export default function RecruiterApplicationsPage() {
                     </tr>
                   ) : (
                     filteredApplications.map((app) => (
-                      <tr key={app.id} className="border-b hover:bg-muted/50">
+                      <tr key={String(app.id)} className="border-b hover:bg-muted/50">
                         <td className="p-4">
                           <div className="flex items-center gap-3">
                             <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                               <span className="font-medium text-sm">
-                                {app.student?.name?.charAt(0) || "?"}
+                                {typeof app.student?.name === 'string' ? app.student.name.charAt(0) : "?"}
                               </span>
                             </div>
                             <div>
-                              <p className="font-medium">{app.student?.name || "Unknown"}</p>
+                              <p className="font-medium">{typeof app.student?.name === 'string' ? app.student.name : "Unknown"}</p>
                               <p className="text-sm text-muted-foreground">
                                 {app.student?.branch} • {app.student?.graduationYear}
                               </p>
@@ -287,7 +287,7 @@ export default function RecruiterApplicationsPage() {
                     <h4 className="font-medium mb-2">Skills</h4>
                     <div className="flex flex-wrap gap-2">
                       {selectedApp.student.skills.map((skill) => (
-                        <Badge key={skill} variant="secondary">{skill}</Badge>
+                        <Badge key={String(skill)} variant="secondary">{skill}</Badge>
                       ))}
                     </div>
                   </div>

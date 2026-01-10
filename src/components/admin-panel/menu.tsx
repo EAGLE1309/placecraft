@@ -26,7 +26,14 @@ export function Menu({ isOpen }: MenuProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { role } = useAuth();
-  const menuList = getMenuList(pathname, role);
+  
+  // Defensive check: ensure role is a valid string, never an object
+  const safeRole =
+    role === "student" || role === "admin" || role === "recruiter"
+      ? role
+      : null;
+  
+  const menuList = getMenuList(pathname, safeRole);
 
   const handleSignOut = async () => {
     await signOut();

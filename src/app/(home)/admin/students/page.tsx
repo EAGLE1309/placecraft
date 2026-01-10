@@ -22,6 +22,7 @@ import {
   Calendar,
   Briefcase
 } from "lucide-react";
+import { toDate } from "@/lib/utils";
 
 export default function AdminStudentsPage() {
   const [students, setStudents] = useState<StudentProfile[]>([]);
@@ -305,7 +306,7 @@ export default function AdminStudentsPage() {
                           <div>
                             <p className="text-sm font-medium">Application #{app.id.slice(0, 8)}</p>
                             <p className="text-xs text-muted-foreground">
-                              Applied: {app.createdAt.toDate().toLocaleDateString()}
+                              Applied: {toDate(app.createdAt).toLocaleDateString()}
                             </p>
                           </div>
                           <Badge>{app.status}</Badge>

@@ -3,6 +3,7 @@ import { doc, updateDoc, arrayUnion, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import { Achievement } from "@/types";
 import crypto from "crypto";
+import { cleanUndefinedValues } from "@/lib/ai/resume-ai";
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,10 +22,10 @@ export async function POST(request: NextRequest) {
     };
 
     const studentRef = doc(db!, "students", studentId);
-    await updateDoc(studentRef, {
+    await updateDoc(studentRef, cleanUndefinedValues({
       achievements: arrayUnion(achievementWithId),
       updatedAt: Timestamp.now(),
-    });
+    }));
 
     return NextResponse.json({
       success: true,
@@ -52,9 +53,9 @@ export async function DELETE(request: NextRequest) {
 
     const studentRef = doc(db!, "students", studentId);
 
-    await updateDoc(studentRef, {
+    await updateDoc(studentRef, cleanUndefinedValues({
       updatedAt: Timestamp.now(),
-    });
+    }));
 
     return NextResponse.json({
       success: true,

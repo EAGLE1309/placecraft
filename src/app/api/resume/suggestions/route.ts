@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { collection, doc, getDoc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
+import { cleanUndefinedValues } from "@/lib/ai/resume-ai";
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,15 +25,15 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "accept") {
-      await updateDoc(generationRef, {
+      await updateDoc(generationRef, cleanUndefinedValues({
         acceptedSuggestions: arrayUnion(suggestionId),
         rejectedSuggestions: arrayRemove(suggestionId),
-      });
+      }));
     } else if (action === "reject") {
-      await updateDoc(generationRef, {
+      await updateDoc(generationRef, cleanUndefinedValues({
         rejectedSuggestions: arrayUnion(suggestionId),
         acceptedSuggestions: arrayRemove(suggestionId),
-      });
+      }));
     } else {
       return NextResponse.json(
         { error: "Invalid action. Use 'accept' or 'reject'" },

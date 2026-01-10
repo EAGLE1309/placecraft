@@ -20,8 +20,8 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const auth = useAuth();
-  return <AuthContext.Provider value={auth}>{children}</AuthContext.Provider>;
+  const { user, loading, isAuthorized, role } = useAuth();
+  return <AuthContext.Provider value={{ user, loading, isAuthorized, role }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuthContext() {

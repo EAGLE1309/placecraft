@@ -26,6 +26,7 @@ import {
   Search,
   Filter
 } from "lucide-react";
+import { toDate } from "@/lib/utils";
 
 export default function AdminDrivesPage() {
   const [drives, setDrives] = useState<PlacementDrive[]>([]);
@@ -264,7 +265,7 @@ export default function AdminDrivesPage() {
                           </Badge>
                         </td>
                         <td className="p-4 text-sm">
-                          {drive.applicationDeadline.toDate().toLocaleDateString()}
+                          {toDate(drive.applicationDeadline).toLocaleDateString()}
                         </td>
                         <td className="p-4">
                           <span className="font-medium">{drive.applicationCount}</span>
@@ -540,7 +541,7 @@ export default function AdminDrivesPage() {
                   <div>
                     <span className="text-muted-foreground">Deadline:</span>{" "}
                     <span className="font-medium">
-                      {selectedDrive.applicationDeadline.toDate().toLocaleDateString()}
+                      {toDate(selectedDrive.applicationDeadline).toLocaleDateString()}
                     </span>
                   </div>
                   <div>

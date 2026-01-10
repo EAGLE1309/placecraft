@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "deploy:indexes": "firebase deploy --only firestore:indexes"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.964.0",

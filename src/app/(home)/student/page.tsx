@@ -27,6 +27,7 @@ import {
   Calendar
 } from "lucide-react";
 import Link from "next/link";
+import { toDate } from "@/lib/utils";
 
 export default function StudentDashboardPage() {
   const { profile } = useAuth();
@@ -207,7 +208,7 @@ export default function StudentDashboardPage() {
                           </Badge>
                           <p className="text-xs text-muted-foreground mt-1 flex items-center justify-end">
                             <Calendar className="size-3 mr-1" />
-                            {drive.applicationDeadline.toDate().toLocaleDateString()}
+                            {toDate(drive.applicationDeadline).toLocaleDateString()}
                           </p>
                         </div>
                         <Link href={`/student/drives?driveId=${drive.id}`}>
@@ -259,7 +260,7 @@ export default function StudentDashboardPage() {
                       <div>
                         <p className="font-medium text-sm">Application #{app.id.slice(0, 8)}</p>
                         <p className="text-xs text-muted-foreground">
-                          Applied {app.createdAt.toDate().toLocaleDateString()}
+                          Applied {toDate(app.createdAt).toLocaleDateString()}
                         </p>
                       </div>
                       <Badge className={getStatusColor(app.status)}>

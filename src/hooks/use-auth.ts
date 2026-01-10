@@ -6,11 +6,29 @@ import { onTokenChange, isEmailAllowed, setSessionCookie, clearSessionCookie, ge
 import { AuthUser, StudentProfile, RecruiterProfile } from "@/types";
 import { getStudentByUid, getRecruiterByUid } from "@/lib/firebase/firestore";
 
+// Normalize role to ensure it's always a string, never an object
+const normalizeRole = (r: any): "student" | "admin" | "recruiter" | null => {
+  if (typeof r === "string") {
+    if (r === "student" || r === "admin" || r === "recruiter") {
+      return r;
+    }
+    return null;
+  }
+  if (r && typeof r === "object") {
+    // Handle case where role might be wrapped in an object
+    const roleValue = r.role ?? r.value ?? String(r);
+    if (roleValue === "student" || roleValue === "admin" || roleValue === "recruiter") {
+      return roleValue;
+    }
+  }
+  return null;
+};
+
 export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
-  const [role, setRole] = useState<UserRole>(null);
+  const [role, setRole] = useState<"student" | "admin" | "recruiter" | null>(null);
   // Tri-state: undefined = still loading, null = no profile found, object = profile loaded
   const [profile, setProfile] = useState<StudentProfile | RecruiterProfile | null | undefined>(undefined);
   const [profileLoading, setProfileLoading] = useState(true);
@@ -28,7 +46,7 @@ export function useAuth() {
         const authorized = isEmailAllowed(firebaseUser.email);
         setIsAuthorized(authorized);
         const userRole = getUserRole(firebaseUser.email);
-        setRole(userRole);
+        setRole(normalizeRole(userRole));
 
         // Fetch profile based on role
         if (authorized && userRole) {

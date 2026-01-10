@@ -6,268 +6,126 @@ import { useRouter } from "next/navigation";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
-import { ResumePreview } from "@/components/resume/resume-preview";
-import { StudentProfile, PersonalInfo, Education, Experience, Project, Certification } from "@/types";
+import { StudentProfile } from "@/types";
 import {
   ArrowLeft,
-  Plus,
-  Trash2,
-  Eye,
   Download,
   CheckCircle,
   Sparkles,
   AlertCircle,
+  Wand2,
+  FileText,
+  TrendingUp,
+  ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
-import { v4 as uuidv4 } from "uuid";
+
+interface StoredAnalysis {
+  id: string;
+  overallScore: number;
+  atsScore: number;
+  strengths: string[];
+  weaknesses: string[];
+  suggestions: Array<{
+    id: string;
+    type: string;
+    section: string;
+    suggestion: string;
+    priority: string;
+  }>;
+  extractedData: {
+    personalInfo: Record<string, string | undefined>;
+    education: Array<Record<string, unknown>>;
+    experience: Array<Record<string, unknown>>;
+    projects: Array<Record<string, unknown>>;
+    skills: string[];
+  };
+}
+
+interface ImprovedResult {
+  pdfUrl: string;
+  improvementSummary: string[];
+  estimatedScore: number;
+  originalScore: number;
+}
 
 export default function ResumeImprovePage() {
   const { profile } = useAuth();
   const router = useRouter();
   const studentProfile = profile as StudentProfile | null;
 
-  const [personalInfo, setPersonalInfo] = useState<PersonalInfo>({
-    name: "",
-    email: "",
-    phone: "",
-    location: "",
-    linkedin: "",
-    github: "",
-    portfolio: "",
-    summary: "",
-  });
-
-  const [education, setEducation] = useState<Education[]>([]);
-  const [experience, setExperience] = useState<Experience[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [skills, setSkills] = useState<string[]>([]);
-  const [certifications, setCertifications] = useState<Certification[]>([]);
-  const [achievements, setAchievements] = useState<string[]>([]);
-
-  const [showPreview, setShowPreview] = useState(false);
-  const [generating, setGenerating] = useState(false);
-  const [finalizing, setFinalizing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [analysis, setAnalysis] = useState<StoredAnalysis | null>(null);
+  const [improving, setImproving] = useState(false);
+  const [improvedResult, setImprovedResult] = useState<ImprovedResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Fetch stored analysis on mount
   useEffect(() => {
-    if (studentProfile) {
-      setPersonalInfo({
-        name: studentProfile.name,
-        email: studentProfile.email,
-        phone: studentProfile.phone,
-        location: studentProfile.college,
-        linkedin: "",
-        github: "",
-        portfolio: "",
-        summary: "",
-      });
-      setEducation(studentProfile.education || []);
-      setExperience(studentProfile.experience || []);
-      setProjects(studentProfile.projects || []);
-      setSkills(studentProfile.skills || []);
-    }
-  }, [studentProfile]);
-
-  const addEducation = () => {
-    setEducation([
-      ...education,
-      {
-        id: uuidv4(),
-        institution: "",
-        degree: "",
-        field: "",
-        startYear: new Date().getFullYear(),
-        endYear: new Date().getFullYear(),
-        grade: "",
-        current: false,
-      },
-    ]);
-  };
-
-  const updateEducation = (id: string, field: keyof Education, value: string | number | boolean) => {
-    setEducation(education.map((edu) => (edu.id === id ? { ...edu, [field]: value } : edu)));
-  };
-
-  const removeEducation = (id: string) => {
-    setEducation(education.filter((edu) => edu.id !== id));
-  };
-
-  const addExperience = () => {
-    setExperience([
-      ...experience,
-      {
-        id: uuidv4(),
-        company: "",
-        role: "",
-        description: "",
-        startDate: "",
-        endDate: "",
-        current: false,
-        skills: [],
-      },
-    ]);
-  };
-
-  const updateExperience = (id: string, field: keyof Experience, value: string | string[] | boolean) => {
-    setExperience(experience.map((exp) => (exp.id === id ? { ...exp, [field]: value } : exp)));
-  };
-
-  const removeExperience = (id: string) => {
-    setExperience(experience.filter((exp) => exp.id !== id));
-  };
-
-  const addProject = () => {
-    setProjects([
-      ...projects,
-      {
-        id: uuidv4(),
-        title: "",
-        description: "",
-        technologies: [],
-        link: "",
-        startDate: "",
-        endDate: "",
-      },
-    ]);
-  };
-
-  const updateProject = (id: string, field: keyof Project, value: string | string[]) => {
-    setProjects(projects.map((proj) => (proj.id === id ? { ...proj, [field]: value } : proj)));
-  };
-
-  const removeProject = (id: string) => {
-    setProjects(projects.filter((proj) => proj.id !== id));
-  };
-
-  const addCertification = () => {
-    setCertifications([
-      ...certifications,
-      {
-        id: uuidv4(),
-        name: "",
-        issuer: "",
-        date: "",
-        credentialId: "",
-        url: "",
-      },
-    ]);
-  };
-
-  const updateCertification = (id: string, field: keyof Certification, value: string) => {
-    setCertifications(certifications.map((cert) => (cert.id === id ? { ...cert, [field]: value } : cert)));
-  };
-
-  const removeCertification = (id: string) => {
-    setCertifications(certifications.filter((cert) => cert.id !== id));
-  };
-
-  const addAchievement = () => {
-    setAchievements([...achievements, ""]);
-  };
-
-  const updateAchievement = (index: number, value: string) => {
-    const newAchievements = [...achievements];
-    newAchievements[index] = value;
-    setAchievements(newAchievements);
-  };
-
-  const removeAchievement = (index: number) => {
-    setAchievements(achievements.filter((_, i) => i !== index));
-  };
-
-  const addSkill = (skill: string) => {
-    if (skill && !skills.includes(skill)) {
-      setSkills([...skills, skill]);
-    }
-  };
-
-  const removeSkill = (skill: string) => {
-    setSkills(skills.filter((s) => s !== skill));
-  };
-
-  const handleGeneratePreview = () => {
-    setShowPreview(true);
-  };
-
-  const handleDownloadPDF = async () => {
-    setGenerating(true);
-    setError(null);
-
-    try {
-      const response = await fetch("/api/resume/generate-pdf", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          personalInfo,
-          education,
-          experience,
-          projects,
-          skills,
-          certifications,
-          achievements,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to generate PDF");
+    async function fetchAnalysis() {
+      if (!studentProfile?.id) {
+        setLoading(false);
+        return;
       }
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${personalInfo.name.replace(/\s+/g, "_")}_Resume.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (err) {
-      console.error("Failed to generate PDF:", err);
-      setError("Failed to generate PDF. Please try again.");
-    } finally {
-      setGenerating(false);
-    }
-  };
+      try {
+        const res = await fetch(`/api/resume/analyze?studentId=${studentProfile.id}`);
+        const data = await res.json();
 
-  const handleFinalize = async () => {
-    setFinalizing(true);
+        if (data.success && data.hasAnalysis) {
+          setAnalysis(data.analysis);
+        }
+      } catch (err) {
+        console.error("Failed to fetch analysis:", err);
+        setError("Failed to load resume analysis.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchAnalysis();
+  }, [studentProfile?.id]);
+
+  const handleImproveResume = async () => {
+    if (!studentProfile || !analysis) return;
+
+    setImproving(true);
     setError(null);
 
     try {
-      if (!studentProfile) throw new Error("Student profile not found");
-
-      const response = await fetch("/api/resume/finalize", {
+      const res = await fetch("/api/resume/improve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           studentId: studentProfile.id,
-          personalInfo,
-          education,
-          experience,
-          projects,
-          skills,
-          certifications,
-          achievements,
+          analysisId: analysis.id,
         }),
       });
 
-      const data = await response.json();
+      const data = await res.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to finalize resume");
+      if (!res.ok) {
+        if (res.status === 429) {
+          setError(`Rate limit reached. Please try again in ${data.retryAfter || 60} seconds.`);
+        } else {
+          setError(data.error || "Failed to improve resume.");
+        }
+        return;
       }
 
-      router.push("/student/resume/history");
+      setImprovedResult({
+        pdfUrl: data.pdfUrl,
+        improvementSummary: data.improvementSummary,
+        estimatedScore: data.estimatedScore,
+        originalScore: data.originalScore,
+      });
     } catch (err) {
-      console.error("Failed to finalize resume:", err);
-      setError(err instanceof Error ? err.message : "Failed to finalize resume");
+      console.error("Failed to improve resume:", err);
+      setError(err instanceof Error ? err.message : "Failed to improve resume.");
     } finally {
-      setFinalizing(false);
+      setImproving(false);
     }
   };
 
@@ -281,6 +139,122 @@ export default function ResumeImprovePage() {
     );
   }
 
+  if (loading) {
+    return (
+      <ContentLayout title="Improve Resume">
+        <div className="flex items-center justify-center h-64">
+          <Spinner className="size-8" />
+          <span className="ml-3">Loading your resume analysis...</span>
+        </div>
+      </ContentLayout>
+    );
+  }
+
+  // No analysis found - prompt user to upload/analyze first
+  if (!analysis) {
+    return (
+      <ContentLayout title="Improve Resume">
+        <div className="space-y-6">
+          <Button variant="ghost" asChild>
+            <Link href="/student/resume">
+              <ArrowLeft className="size-4 mr-2" />
+              Back to Resume
+            </Link>
+          </Button>
+
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center py-12">
+                <FileText className="size-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+                <h3 className="text-xl font-semibold mb-2">No Resume Analysis Found</h3>
+                <p className="text-muted-foreground mb-6">
+                  Please upload and analyze your resume first before improving it.
+                </p>
+                <Button asChild>
+                  <Link href="/student/resume">Go to Resume Page</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </ContentLayout>
+    );
+  }
+
+  // Show improved result
+  if (improvedResult) {
+    return (
+      <ContentLayout title="Improved Resume">
+        <div className="space-y-6">
+          <Button variant="ghost" asChild>
+            <Link href="/student/resume">
+              <ArrowLeft className="size-4 mr-2" />
+              Back to Resume
+            </Link>
+          </Button>
+
+          <Card className="border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-green-800 dark:text-green-200">
+                <CheckCircle className="size-6" />
+                Resume Improved Successfully!
+              </CardTitle>
+              <CardDescription>
+                Your resume has been enhanced using AI based on the analysis suggestions.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center gap-6">
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">Original Score</p>
+                  <p className="text-3xl font-bold">{improvedResult.originalScore}</p>
+                </div>
+                <TrendingUp className="size-8 text-green-600" />
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">Estimated New Score</p>
+                  <p className="text-3xl font-bold text-green-600">{improvedResult.estimatedScore}</p>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-semibold mb-3">Improvements Made:</h4>
+                <ul className="space-y-2">
+                  {improvedResult.improvementSummary.map((improvement, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm">
+                      <CheckCircle className="size-4 text-green-600 mt-0.5 shrink-0" />
+                      {improvement}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="flex gap-3">
+                <Button asChild>
+                  <a href={improvedResult.pdfUrl} target="_blank" rel="noopener noreferrer">
+                    <Download className="size-4 mr-2" />
+                    Download Improved Resume
+                  </a>
+                </Button>
+                <Button variant="outline" asChild>
+                  <a href={improvedResult.pdfUrl} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="size-4 mr-2" />
+                    View PDF
+                  </a>
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link href="/student/resume/history">
+                    View Resume History
+                  </Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </ContentLayout>
+    );
+  }
+
+  // Main improve view - show analysis and improve button
   return (
     <ContentLayout title="Improve Resume">
       <div className="space-y-6">
@@ -291,38 +265,6 @@ export default function ResumeImprovePage() {
               Back to Resume
             </Link>
           </Button>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleGeneratePreview}>
-              <Eye className="size-4 mr-2" />
-              {showPreview ? "Hide Preview" : "Show Preview"}
-            </Button>
-            <Button variant="outline" onClick={handleDownloadPDF} disabled={generating}>
-              {generating ? (
-                <>
-                  <Spinner className="size-4 mr-2" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Download className="size-4 mr-2" />
-                  Download PDF
-                </>
-              )}
-            </Button>
-            <Button onClick={handleFinalize} disabled={finalizing}>
-              {finalizing ? (
-                <>
-                  <Spinner className="size-4 mr-2" />
-                  Finalizing...
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="size-4 mr-2" />
-                  Finalize Resume
-                </>
-              )}
-            </Button>
-          </div>
         </div>
 
         {error && (
@@ -334,510 +276,95 @@ export default function ResumeImprovePage() {
           </div>
         )}
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          <div className="space-y-6">
-            {/* Personal Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Personal Information</CardTitle>
-                <CardDescription>Your basic contact details</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Full Name *</Label>
-                    <Input
-                      id="name"
-                      value={personalInfo.name}
-                      onChange={(e) => setPersonalInfo({ ...personalInfo, name: e.target.value })}
-                      placeholder="John Doe"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email *</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={personalInfo.email}
-                      onChange={(e) => setPersonalInfo({ ...personalInfo, email: e.target.value })}
-                      placeholder="john@example.com"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone *</Label>
-                    <Input
-                      id="phone"
-                      value={personalInfo.phone}
-                      onChange={(e) => setPersonalInfo({ ...personalInfo, phone: e.target.value })}
-                      placeholder="+1 234 567 8900"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="location">Location</Label>
-                    <Input
-                      id="location"
-                      value={personalInfo.location}
-                      onChange={(e) => setPersonalInfo({ ...personalInfo, location: e.target.value })}
-                      placeholder="City, Country"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="linkedin">LinkedIn</Label>
-                    <Input
-                      id="linkedin"
-                      value={personalInfo.linkedin}
-                      onChange={(e) => setPersonalInfo({ ...personalInfo, linkedin: e.target.value })}
-                      placeholder="linkedin.com/in/johndoe"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="github">GitHub</Label>
-                    <Input
-                      id="github"
-                      value={personalInfo.github}
-                      onChange={(e) => setPersonalInfo({ ...personalInfo, github: e.target.value })}
-                      placeholder="github.com/johndoe"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="portfolio">Portfolio Website</Label>
-                  <Input
-                    id="portfolio"
-                    value={personalInfo.portfolio}
-                    onChange={(e) => setPersonalInfo({ ...personalInfo, portfolio: e.target.value })}
-                    placeholder="https://johndoe.com"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="summary">Professional Summary</Label>
-                  <Textarea
-                    id="summary"
-                    value={personalInfo.summary}
-                    onChange={(e) => setPersonalInfo({ ...personalInfo, summary: e.target.value })}
-                    placeholder="A brief summary of your professional background and goals..."
-                    rows={4}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Education */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Education</CardTitle>
-                    <CardDescription>Your academic background</CardDescription>
-                  </div>
-                  <Button size="sm" onClick={addEducation}>
-                    <Plus className="size-4 mr-2" />
-                    Add
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {education.map((edu) => (
-                  <div key={edu.id} className="p-4 border rounded-lg space-y-3">
-                    <div className="flex justify-between items-start">
-                      <h4 className="font-medium">Education Entry</h4>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeEducation(edu.id)}
-                      >
-                        <Trash2 className="size-4 text-red-600" />
-                      </Button>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label>Institution</Label>
-                        <Input
-                          value={edu.institution}
-                          onChange={(e) => updateEducation(edu.id, "institution", e.target.value)}
-                          placeholder="University Name"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Degree</Label>
-                        <Input
-                          value={edu.degree}
-                          onChange={(e) => updateEducation(edu.id, "degree", e.target.value)}
-                          placeholder="Bachelor of Science"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Field of Study</Label>
-                        <Input
-                          value={edu.field}
-                          onChange={(e) => updateEducation(edu.id, "field", e.target.value)}
-                          placeholder="Computer Science"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Grade/CGPA</Label>
-                        <Input
-                          value={edu.grade || ""}
-                          onChange={(e) => updateEducation(edu.id, "grade", e.target.value)}
-                          placeholder="3.8/4.0"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Start Year</Label>
-                        <Input
-                          type="number"
-                          value={edu.startYear}
-                          onChange={(e) => updateEducation(edu.id, "startYear", parseInt(e.target.value))}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>End Year</Label>
-                        <Input
-                          type="number"
-                          value={edu.endYear || ""}
-                          onChange={(e) => updateEducation(edu.id, "endYear", parseInt(e.target.value))}
-                          disabled={edu.current}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {education.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No education entries yet. Click &quot;Add&quot; to get started.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Experience */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Experience</CardTitle>
-                    <CardDescription>Your work experience and internships</CardDescription>
-                  </div>
-                  <Button size="sm" onClick={addExperience}>
-                    <Plus className="size-4 mr-2" />
-                    Add
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {experience.map((exp) => (
-                  <div key={exp.id} className="p-4 border rounded-lg space-y-3">
-                    <div className="flex justify-between items-start">
-                      <h4 className="font-medium">Experience Entry</h4>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeExperience(exp.id)}
-                      >
-                        <Trash2 className="size-4 text-red-600" />
-                      </Button>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label>Company</Label>
-                        <Input
-                          value={exp.company}
-                          onChange={(e) => updateExperience(exp.id, "company", e.target.value)}
-                          placeholder="Company Name"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Role</Label>
-                        <Input
-                          value={exp.role}
-                          onChange={(e) => updateExperience(exp.id, "role", e.target.value)}
-                          placeholder="Software Engineer"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Start Date</Label>
-                        <Input
-                          type="month"
-                          value={exp.startDate}
-                          onChange={(e) => updateExperience(exp.id, "startDate", e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>End Date</Label>
-                        <Input
-                          type="month"
-                          value={exp.endDate || ""}
-                          onChange={(e) => updateExperience(exp.id, "endDate", e.target.value)}
-                          disabled={exp.current}
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Description</Label>
-                      <Textarea
-                        value={exp.description}
-                        onChange={(e) => updateExperience(exp.id, "description", e.target.value)}
-                        placeholder="Describe your responsibilities and achievements..."
-                        rows={3}
-                      />
-                    </div>
-                  </div>
-                ))}
-                {experience.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No experience entries yet. Click &quot;Add&quot; to get started.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Projects */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Projects</CardTitle>
-                    <CardDescription>Your personal and academic projects</CardDescription>
-                  </div>
-                  <Button size="sm" onClick={addProject}>
-                    <Plus className="size-4 mr-2" />
-                    Add
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {projects.map((proj) => (
-                  <div key={proj.id} className="p-4 border rounded-lg space-y-3">
-                    <div className="flex justify-between items-start">
-                      <h4 className="font-medium">Project Entry</h4>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeProject(proj.id)}
-                      >
-                        <Trash2 className="size-4 text-red-600" />
-                      </Button>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="space-y-2">
-                        <Label>Project Title</Label>
-                        <Input
-                          value={proj.title}
-                          onChange={(e) => updateProject(proj.id, "title", e.target.value)}
-                          placeholder="E-commerce Platform"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Description</Label>
-                        <Textarea
-                          value={proj.description}
-                          onChange={(e) => updateProject(proj.id, "description", e.target.value)}
-                          placeholder="Describe what the project does and your role..."
-                          rows={3}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Project Link</Label>
-                        <Input
-                          value={proj.link || ""}
-                          onChange={(e) => updateProject(proj.id, "link", e.target.value)}
-                          placeholder="https://github.com/..."
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {projects.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No projects yet. Click &quot;Add&quot; to get started.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Skills */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Skills</CardTitle>
-                <CardDescription>Your technical and soft skills</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-2">
-                  <Input
-                    id="new-skill"
-                    placeholder="Add a skill..."
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        addSkill(e.currentTarget.value);
-                        e.currentTarget.value = "";
-                      }
-                    }}
-                  />
-                  <Button
-                    onClick={() => {
-                      const input = document.getElementById("new-skill") as HTMLInputElement;
-                      addSkill(input.value);
-                      input.value = "";
-                    }}
-                  >
-                    <Plus className="size-4" />
-                  </Button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {skills.map((skill) => (
-                    <Badge key={skill} variant="secondary" className="px-3 py-1">
-                      {skill}
-                      <button
-                        onClick={() => removeSkill(skill)}
-                        className="ml-2 hover:text-red-600"
-                      >
-                        ×
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Certifications */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Certifications</CardTitle>
-                    <CardDescription>Professional certifications and courses</CardDescription>
-                  </div>
-                  <Button size="sm" onClick={addCertification}>
-                    <Plus className="size-4 mr-2" />
-                    Add
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {certifications.map((cert) => (
-                  <div key={cert.id} className="p-4 border rounded-lg space-y-3">
-                    <div className="flex justify-between items-start">
-                      <h4 className="font-medium">Certification</h4>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeCertification(cert.id)}
-                      >
-                        <Trash2 className="size-4 text-red-600" />
-                      </Button>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label>Certification Name</Label>
-                        <Input
-                          value={cert.name}
-                          onChange={(e) => updateCertification(cert.id, "name", e.target.value)}
-                          placeholder="AWS Certified Developer"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Issuer</Label>
-                        <Input
-                          value={cert.issuer}
-                          onChange={(e) => updateCertification(cert.id, "issuer", e.target.value)}
-                          placeholder="Amazon Web Services"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Date</Label>
-                        <Input
-                          type="month"
-                          value={cert.date}
-                          onChange={(e) => updateCertification(cert.id, "date", e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Credential URL</Label>
-                        <Input
-                          value={cert.url || ""}
-                          onChange={(e) => updateCertification(cert.id, "url", e.target.value)}
-                          placeholder="https://..."
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {certifications.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No certifications yet. Click &quot;Add&quot; to get started.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Achievements */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Achievements</CardTitle>
-                    <CardDescription>Awards, honors, and notable accomplishments</CardDescription>
-                  </div>
-                  <Button size="sm" onClick={addAchievement}>
-                    <Plus className="size-4 mr-2" />
-                    Add
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {achievements.map((achievement, index) => (
-                  <div key={index} className="flex gap-2">
-                    <Input
-                      value={achievement}
-                      onChange={(e) => updateAchievement(index, e.target.value)}
-                      placeholder="Describe your achievement..."
-                    />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeAchievement(index)}
-                    >
-                      <Trash2 className="size-4 text-red-600" />
-                    </Button>
-                  </div>
-                ))}
-                {achievements.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No achievements yet. Click &quot;Add&quot; to get started.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Live Preview */}
-          {showPreview && (
-            <div className="lg:sticky lg:top-6 lg:h-fit">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Sparkles className="size-5 text-purple-600" />
-                    Live Preview
-                  </CardTitle>
-                  <CardDescription>
-                    See how your resume will look
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResumePreview
-                    personalInfo={personalInfo}
-                    education={education}
-                    experience={experience}
-                    projects={projects}
-                    skills={skills}
-                    certifications={certifications}
-                    achievements={achievements}
-                  />
-                </CardContent>
-              </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Wand2 className="size-5 text-purple-600" />
+              AI Resume Improvement
+            </CardTitle>
+            <CardDescription>
+              Our AI will enhance your resume based on the analysis suggestions, improving content, 
+              adding action verbs, and optimizing for ATS systems.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="p-4 border rounded-lg">
+                <h4 className="font-medium mb-2">Current Resume Score</h4>
+                <p className="text-3xl font-bold">{analysis.overallScore}/100</p>
+                <p className="text-sm text-muted-foreground mt-1">ATS: {analysis.atsScore}%</p>
+              </div>
+              <div className="p-4 border rounded-lg bg-purple-50 dark:bg-purple-900/20">
+                <h4 className="font-medium mb-2">After Improvement</h4>
+                <p className="text-3xl font-bold text-purple-600">~{Math.min(100, analysis.overallScore + 15)}/100</p>
+                <p className="text-sm text-muted-foreground mt-1">Estimated improvement</p>
+              </div>
             </div>
-          )}
-        </div>
+
+            <div>
+              <h4 className="font-semibold mb-3">Suggestions to Apply ({analysis.suggestions.length}):</h4>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {analysis.suggestions.slice(0, 5).map((suggestion, i) => (
+                  <div key={i} className="flex items-start gap-2 text-sm p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                    <Badge variant={suggestion.priority === "high" ? "destructive" : "secondary"} className="shrink-0">
+                      {suggestion.priority}
+                    </Badge>
+                    <span><strong>{suggestion.section}:</strong> {suggestion.suggestion}</span>
+                  </div>
+                ))}
+                {analysis.suggestions.length > 5 && (
+                  <p className="text-sm text-muted-foreground">+{analysis.suggestions.length - 5} more suggestions</p>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-semibold mb-3">Extracted Resume Data:</h4>
+              <div className="grid gap-2 md:grid-cols-4 text-sm">
+                <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded text-center">
+                  <p className="text-2xl font-bold">{analysis.extractedData.skills.length}</p>
+                  <p className="text-muted-foreground">Skills</p>
+                </div>
+                <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded text-center">
+                  <p className="text-2xl font-bold">{analysis.extractedData.experience.length}</p>
+                  <p className="text-muted-foreground">Experiences</p>
+                </div>
+                <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded text-center">
+                  <p className="text-2xl font-bold">{analysis.extractedData.education.length}</p>
+                  <p className="text-muted-foreground">Education</p>
+                </div>
+                <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded text-center">
+                  <p className="text-2xl font-bold">{analysis.extractedData.projects.length}</p>
+                  <p className="text-muted-foreground">Projects</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t">
+              <Button 
+                onClick={handleImproveResume} 
+                disabled={improving}
+                className="w-full bg-purple-600 hover:bg-purple-700"
+                size="lg"
+              >
+                {improving ? (
+                  <>
+                    <Spinner className="size-4 mr-2" />
+                    Improving Resume with AI...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="size-4 mr-2" />
+                    Generate Improved Resume
+                  </>
+                )}
+              </Button>
+              <p className="text-xs text-muted-foreground text-center mt-2">
+                This will create a new PDF with improved content based on AI suggestions
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </ContentLayout>
   );
