@@ -18,6 +18,7 @@ import {
   AlertCircle,
   ArrowRight
 } from "lucide-react";
+import { toDate } from "@/lib/utils";
 
 interface ApplicationWithDrive extends Application {
   drive?: PlacementDrive;
@@ -204,7 +205,7 @@ export default function StudentApplicationsPage() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                     <div>
                       <span className="text-muted-foreground">Applied On</span>
-                      <p className="font-medium">{app.createdAt.toDate().toLocaleDateString()}</p>
+                      <p className="font-medium">{toDate(app.createdAt).toLocaleDateString()}</p>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Resume Score</span>
@@ -230,7 +231,7 @@ export default function StudentApplicationsPage() {
                             <div className={`h-2 w-2 rounded-full ${getStatusColor(change.status)}`} />
                             <span className="capitalize font-medium">{change.status}</span>
                             <span className="text-muted-foreground">
-                              - {change.changedAt.toDate().toLocaleDateString()}
+                              - {toDate(change.changedAt).toLocaleDateString()}
                             </span>
                             {change.notes && (
                               <span className="text-muted-foreground">({change.notes})</span>

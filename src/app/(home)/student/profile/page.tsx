@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { updateStudent } from "@/lib/firebase/firestore";
 import { StudentProfile, BRANCHES, COMMON_SKILLS, Education, Experience, Project } from "@/types";
 import { COLLEGES, GRADUATION_YEARS } from "@/lib/constants";
+import { mergeSkills, mergeEducation, mergeExperience, getUniqueSkills, getResumeOnlyCount, MergedSkill, MergedEducation, MergedExperience } from "@/lib/profile-merge-utils";
 import {
   User,
   Mail,
@@ -26,7 +27,8 @@ import {
   X,
   Briefcase,
   FolderGit2,
-  Award
+  Award,
+  FileText
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 
@@ -49,7 +51,31 @@ export default function StudentProfilePage() {
   const [newSkill, setNewSkill] = useState("");
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+
+  // Merged data from manual + resume extraction
+  const mergedSkills = useMemo(() => {
+    if (!studentProfile) return [];
+    return mergeSkills(
+      skills,
+      studentProfile.resumeExtractedSkills || []
+    );
+  }, [skills, studentProfile]);
+
+  const mergedEducation = useMemo(() => {
+    if (!studentProfile) return [];
+    return mergeEducation(
+      studentProfile.education || [],
+      studentProfile.resumeExtractedEducation || []
+    );
+  }, [studentProfile]);
+
+  const mergedExperience = useMemo(() => {
+    if (!studentProfile) return [];
+    return mergeExperience(
+      experiences,
+      studentProfile.resumeExtractedExperience || []
+    );
+  }, [experiences, studentProfile]);
 
   // Sync form data with Firebase profile data
   useEffect(() => {
@@ -104,7 +130,9 @@ export default function StudentProfilePage() {
     if (!studentProfile) return;
     setLoading(true);
     try {
-      await updateStudent(studentProfile.id, { skills });
+      // Save the unique merged skills list
+      const uniqueSkills = getUniqueSkills(mergedSkills);
+      await updateStudent(studentProfile.id, { skills: uniqueSkills });
       await refreshProfile();
     } catch (error) {
       console.error("Failed to update skills:", error);
@@ -114,14 +142,24 @@ export default function StudentProfilePage() {
   };
 
   const addSkill = () => {
-    if (newSkill && !skills.includes(newSkill)) {
-      setSkills([...skills, newSkill]);
+    const normalizedNewSkill = newSkill.trim();
+    if (normalizedNewSkill && !mergedSkills.some(ms => ms.skill.toLowerCase() === normalizedNewSkill.toLowerCase())) {
+      setSkills([...skills, normalizedNewSkill]);
       setNewSkill("");
     }
   };
 
   const removeSkill = (skill: string) => {
+    // Remove from manual skills
     setSkills(skills.filter((s) => s !== skill));
+    
+    // If it's a resume-extracted skill, we need to remove it from the profile
+    if (studentProfile?.resumeExtractedSkills?.includes(skill)) {
+      const updatedResumeSkills = studentProfile.resumeExtractedSkills.filter((s) => s !== skill);
+      updateStudent(studentProfile.id, { resumeExtractedSkills: updatedResumeSkills })
+        .then(() => refreshProfile())
+        .catch((err) => console.error("Failed to remove resume skill:", err));
+    }
   };
 
   const addExperience = () => {
@@ -144,7 +182,16 @@ export default function StudentProfilePage() {
   };
 
   const removeExperience = (id: string) => {
+    // Remove from manual experiences
     setExperiences(experiences.filter((exp) => exp.id !== id));
+    
+    // If it's a resume-extracted experience, remove it from the profile
+    if (studentProfile?.resumeExtractedExperience?.some((exp) => exp.id === id)) {
+      const updatedResumeExp = studentProfile.resumeExtractedExperience.filter((exp) => exp.id !== id);
+      updateStudent(studentProfile.id, { resumeExtractedExperience: updatedResumeExp })
+        .then(() => refreshProfile())
+        .catch((err) => console.error("Failed to remove resume experience:", err));
+    }
   };
 
   const handleExperienceSave = async () => {
@@ -220,7 +267,7 @@ export default function StudentProfilePage() {
               onClick={() => setActiveTab(tab.id as typeof activeTab)}
               className="gap-2"
             >
-              <tab.icon className="size-4" />
+              {typeof tab.icon === 'function' ? <tab.icon className="size-4" /> : null}
               {tab.label}
             </Button>
           ))}
@@ -348,54 +395,107 @@ export default function StudentProfilePage() {
               <CardTitle>Skills</CardTitle>
               <CardDescription>Add your technical and soft skills</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Add a skill..."
-                  value={newSkill}
-                  onChange={(e) => setNewSkill(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && addSkill()}
-                />
-                <Button onClick={addSkill}>
-                  <Plus className="size-4" />
-                </Button>
+            <CardContent className="space-y-6">
+              {/* Add New Skill Section */}
+              <div className="space-y-2">
+                <Label htmlFor="new-skill" className="text-sm font-medium">Add New Skill</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="new-skill"
+                    placeholder="e.g., React, Python, Machine Learning..."
+                    value={newSkill}
+                    onChange={(e) => setNewSkill(e.target.value)}
+                    onKeyPress={(e) => e.key === "Enter" && addSkill()}
+                  />
+                  <Button onClick={addSkill} disabled={!newSkill.trim()}>
+                    <Plus className="size-4 mr-2" />
+                    Add
+                  </Button>
+                </div>
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                {skills.map((skill) => (
-                  <Badge key={skill} variant="secondary" className="gap-1 pr-1">
-                    {skill}
-                    <button
-                      onClick={() => removeSkill(skill)}
-                      className="ml-1 hover:bg-muted rounded-full p-0.5"
-                    >
-                      <X className="size-3" />
-                    </button>
-                  </Badge>
-                ))}
+              {/* Your Skills Section */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">
+                    Your Skills ({mergedSkills.length})
+                    {getResumeOnlyCount(mergedSkills) > 0 && (
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">
+                        ({getResumeOnlyCount(mergedSkills)} from resume)
+                      </span>
+                    )}
+                  </Label>
+                  {mergedSkills.length > 0 && (
+                    <span className="text-xs text-muted-foreground">Click × to remove</span>
+                  )}
+                </div>
+                {mergedSkills.length > 0 ? (
+                  <div className="p-4 border rounded-lg bg-muted/30">
+                    <div className="flex flex-wrap gap-2">
+                      {mergedSkills.map((mergedSkill) => (
+                        <Badge 
+                          key={typeof mergedSkill.skill === 'string' ? mergedSkill.skill : String(mergedSkill.skill)} 
+                          variant={mergedSkill.source === "resume" ? "secondary" : "default"}
+                          className="px-3 py-1.5 text-sm font-medium gap-2"
+                        >
+                          {mergedSkill.source === "resume" && (
+                            <FileText className="size-3 opacity-70" />
+                          )}
+                          {typeof mergedSkill.skill === 'string' ? mergedSkill.skill : String(mergedSkill.skill)}
+                          <button
+                            onClick={() => removeSkill(typeof mergedSkill.skill === 'string' ? mergedSkill.skill : String(mergedSkill.skill))}
+                            className="ml-1 hover:bg-primary-foreground/20 rounded-full p-0.5 transition-colors"
+                            aria-label={`Remove ${typeof mergedSkill.skill === 'string' ? mergedSkill.skill : 'skill'}`}
+                          >
+                            <X className="size-3.5" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                    {getResumeOnlyCount(mergedSkills) > 0 && (
+                      <div className="mt-3 pt-3 border-t">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                          <FileText className="size-3.5" />
+                          Skills with this icon were extracted from your resume
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-8 border-2 border-dashed rounded-lg text-center">
+                    <Award className="size-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+                    <p className="text-sm text-muted-foreground mb-1">No skills added yet</p>
+                    <p className="text-xs text-muted-foreground">Add skills manually or select from suggestions below</p>
+                  </div>
+                )}
               </div>
 
-              <div className="pt-4 border-t">
-                <p className="text-sm text-muted-foreground mb-2">Suggested skills:</p>
+              {/* Suggested Skills Section */}
+              <div className="pt-4 border-t space-y-3">
+                <Label className="text-sm font-medium">Suggested Skills</Label>
+                <p className="text-xs text-muted-foreground">Click to add these common skills to your profile</p>
                 <div className="flex flex-wrap gap-2">
-                  {COMMON_SKILLS.filter((s) => !skills.includes(s)).slice(0, 10).map((skill) => (
+                  {COMMON_SKILLS.filter((s) => !skills.includes(s)).slice(0, 15).map((skill) => (
                     <Badge
                       key={skill}
                       variant="outline"
-                      className="cursor-pointer hover:bg-muted"
+                      className="px-3 py-1.5 text-sm cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
                       onClick={() => setSkills([...skills, skill])}
                     >
-                      <Plus className="size-3 mr-1" />
+                      <Plus className="size-3.5 mr-1.5" />
                       {skill}
                     </Badge>
                   ))}
                 </div>
               </div>
 
-              <Button onClick={handleSkillsSave} disabled={loading} className="mt-4">
-                {loading ? <Spinner className="size-4" /> : <Save className="size-4 mr-2" />}
-                Save Skills
-              </Button>
+              {/* Save Button */}
+              <div className="pt-4 border-t">
+                <Button onClick={handleSkillsSave} disabled={loading} size="lg" className="w-full sm:w-auto">
+                  {loading ? <Spinner className="size-4 mr-2" /> : <Save className="size-4 mr-2" />}
+                  Save Skills
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -416,20 +516,28 @@ export default function StudentProfilePage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {experiences.length === 0 ? (
+              {mergedExperience.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Briefcase className="size-12 mx-auto mb-2 opacity-50" />
                   <p>No experience added yet</p>
                 </div>
               ) : (
-                experiences.map((exp, index) => (
-                  <div key={exp.id} className="p-4 border rounded-lg space-y-3">
+                mergedExperience.map((exp, index) => (
+                  <div key={String(exp.id)} className={`p-4 border rounded-lg space-y-3 ${exp.source === "resume" ? "bg-secondary/20" : ""}`}>
                     <div className="flex items-center justify-between">
-                      <h4 className="font-medium">Experience {index + 1}</h4>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-medium">Experience {index + 1}</h4>
+                        {exp.source === "resume" && (
+                          <Badge variant="secondary" className="text-xs">
+                            <FileText className="size-3 mr-1" />
+                            From Resume
+                          </Badge>
+                        )}
+                      </div>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => removeExperience(exp.id)}
+                        onClick={() => removeExperience(String(exp.id))}
                       >
                         <X className="size-4" />
                       </Button>
@@ -438,31 +546,31 @@ export default function StudentProfilePage() {
                       <Input
                         placeholder="Company"
                         value={exp.company}
-                        onChange={(e) => updateExperience(exp.id, "company", e.target.value)}
+                        onChange={(e) => updateExperience(String(exp.id), "company", e.target.value)}
                       />
                       <Input
                         placeholder="Role"
                         value={exp.role}
-                        onChange={(e) => updateExperience(exp.id, "role", e.target.value)}
+                        onChange={(e) => updateExperience(String(exp.id), "role", e.target.value)}
                       />
                       <Input
                         type="month"
                         placeholder="Start Date"
                         value={exp.startDate}
-                        onChange={(e) => updateExperience(exp.id, "startDate", e.target.value)}
+                        onChange={(e) => updateExperience(String(exp.id), "startDate", e.target.value)}
                       />
                       <Input
                         type="month"
                         placeholder="End Date"
                         value={exp.endDate || ""}
-                        onChange={(e) => updateExperience(exp.id, "endDate", e.target.value)}
+                        onChange={(e) => updateExperience(String(exp.id), "endDate", e.target.value)}
                         disabled={exp.current}
                       />
                     </div>
                     <Textarea
                       placeholder="Description of your role and responsibilities..."
                       value={exp.description}
-                      onChange={(e) => updateExperience(exp.id, "description", e.target.value)}
+                      onChange={(e) => updateExperience(String(exp.id), "description", e.target.value)}
                     />
                   </div>
                 ))
@@ -499,13 +607,13 @@ export default function StudentProfilePage() {
                 </div>
               ) : (
                 projects.map((proj, index) => (
-                  <div key={proj.id} className="p-4 border rounded-lg space-y-3">
+                  <div key={String(proj.id)} className="p-4 border rounded-lg space-y-3">
                     <div className="flex items-center justify-between">
                       <h4 className="font-medium">Project {index + 1}</h4>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => removeProject(proj.id)}
+                        onClick={() => removeProject(String(proj.id))}
                       >
                         <X className="size-4" />
                       </Button>
@@ -514,23 +622,23 @@ export default function StudentProfilePage() {
                       <Input
                         placeholder="Project Title"
                         value={proj.title}
-                        onChange={(e) => updateProject(proj.id, "title", e.target.value)}
+                        onChange={(e) => updateProject(String(proj.id), "title", e.target.value)}
                       />
                       <Input
                         placeholder="Project Link (optional)"
                         value={proj.link || ""}
-                        onChange={(e) => updateProject(proj.id, "link", e.target.value)}
+                        onChange={(e) => updateProject(String(proj.id), "link", e.target.value)}
                       />
                     </div>
                     <Textarea
                       placeholder="Project description..."
                       value={proj.description}
-                      onChange={(e) => updateProject(proj.id, "description", e.target.value)}
+                      onChange={(e) => updateProject(String(proj.id), "description", e.target.value)}
                     />
                     <Input
                       placeholder="Technologies (comma-separated)"
                       value={proj.technologies.join(", ")}
-                      onChange={(e) => updateProject(proj.id, "technologies", e.target.value.split(",").map((t) => t.trim()))}
+                      onChange={(e) => updateProject(String(proj.id), "technologies", e.target.value.split(",").map((t) => t.trim()))}
                     />
                   </div>
                 ))

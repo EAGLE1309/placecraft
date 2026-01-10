@@ -64,22 +64,38 @@ export default function StudentResumePage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [quota, setQuota] = useState<QuotaInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loadingAnalysis, setLoadingAnalysis] = useState(true);
 
-  // Fetch quota info on mount
+  // Fetch persisted analysis on mount
   useEffect(() => {
-    async function fetchQuota() {
+    async function fetchStoredAnalysis() {
+      if (!studentProfile?.id) {
+        setLoadingAnalysis(false);
+        return;
+      }
+      
       try {
-        const res = await fetch("/api/resume/analyze");
+        const res = await fetch(`/api/resume/analyze?studentId=${studentProfile.id}`);
         const data = await res.json();
+        
         setQuota(data.quota);
+        
+        if (data.success && data.hasAnalysis) {
+          setAnalysis(data.analysis);
+          setAnalysisId(data.analysis.id);
+        }
       } catch (err) {
-        console.error("Failed to fetch quota:", err);
+        console.error("Failed to fetch stored analysis:", err);
+      } finally {
+        setLoadingAnalysis(false);
       }
     }
-    fetchQuota();
-  }, []);
+    
+    fetchStoredAnalysis();
+  }, [studentProfile?.id]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -103,11 +119,13 @@ export default function StudentResumePage() {
     setError(null);
 
     try {
-      // Upload to Cloudflare R2 via API
+      // Upload to Cloudflare R2 via API - now includes extraction + analysis
       const formData = new FormData();
       formData.append("file", file);
       formData.append("studentId", studentProfile.id);
 
+      setAnalyzing(true); // Analysis happens during upload now
+      
       const uploadRes = await fetch("/api/resume/upload", {
         method: "POST",
         body: formData,
@@ -119,40 +137,19 @@ export default function StudentResumePage() {
         throw new Error(uploadData.error || "Failed to upload resume");
       }
 
-      await refreshProfile();
       setUploading(false);
       setUploadProgress(0);
 
-      // Trigger AI analysis
-      setAnalyzing(true);
-      const analyzeRes = await fetch("/api/resume/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          downloadUrl: uploadData.downloadUrl,
-          studentId: studentProfile.id,
-        }),
-      });
-
-      const analyzeData = await analyzeRes.json();
-
-      if (!analyzeRes.ok) {
-        if (analyzeRes.status === 429) {
-          setError(`Rate limit reached. Please try again in ${analyzeData.retryAfter || 60} seconds.`);
-          setQuota(analyzeData.quota);
-        } else if (analyzeRes.status === 400) {
-          // Client error - show specific message
-          setError(analyzeData.error || "Invalid resume file. Please ensure your PDF is readable and contains text.");
-        } else if (analyzeRes.status === 404) {
-          // File not found
-          setError("Resume file not found. Please try uploading again.");
-        } else {
-          // Server error
-          setError(analyzeData.error || "Failed to analyze resume. Please try again later.");
-        }
-      } else {
-        setAnalysis(analyzeData.analysis);
-        setQuota(analyzeData.quota);
+      // Check if analysis was included in upload response (new unified flow)
+      if (uploadData.analysisStatus === "completed" && uploadData.analysis) {
+        setAnalysis(uploadData.analysis);
+        setAnalysisId(uploadData.analysisId);
+        setQuota(uploadData.quota);
+      } else if (uploadData.analysisStatus === "rate_limited") {
+        setError(`Rate limit reached. Please try again in ${uploadData.retryAfter || 60} seconds.`);
+        setQuota(uploadData.quota);
+      } else if (uploadData.analysisStatus === "failed") {
+        setError(uploadData.error || "Resume uploaded but analysis failed. You can try re-analyzing later.");
       }
 
       await refreshProfile();
@@ -185,8 +182,8 @@ export default function StudentResumePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          downloadUrl: studentProfile.resumeUrl,
           studentId: studentProfile.id,
+          forceReanalyze: true, // Force fresh analysis
         }),
       });
 
@@ -201,7 +198,7 @@ export default function StudentResumePage() {
           } else if (res.status === 400) {
             errorMessage = data.error || "Invalid resume file. Please ensure your PDF is readable.";
           } else if (res.status === 404) {
-            errorMessage = "Resume file not found. Please try uploading again.";
+            errorMessage = data.error || "Resume file not found. Please try uploading again.";
           } else {
             errorMessage = data.error || errorMessage;
           }
@@ -215,6 +212,7 @@ export default function StudentResumePage() {
       } else {
         const data = await res.json();
         setAnalysis(data.analysis);
+        setAnalysisId(data.analysisId);
         setQuota(data.quota);
         await refreshProfile();
       }

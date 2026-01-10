@@ -2,16 +2,19 @@
 // In production, this would be managed via Firestore
 export const ALLOWED_ADMIN_EMAILS: string[] = [
   "eagle.business00@gmail.com",
+  "abc0913.xyz@gmail.com"
 ];
 
 export const ALLOWED_RECRUITER_EMAILS: string[] = [
-  "eaglemcraft@gmail.com"
+  "eaglemcraft@gmail.com",
+  "shreyas.date09@gmail.com"
 ];
 
 // Students can sign up with any email (will need to complete onboarding)
 // For hackathon demo, we allow specific emails
 export const ALLOWED_STUDENT_EMAILS: string[] = [
   "vighneshbangar57@gmail.com",
+  "placecraft.student@gmail.com"
 ];
 
 export const APP_CONFIG = {

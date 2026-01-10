@@ -351,7 +351,7 @@ export default function NewDrivePage() {
               <Label>Eligible Branches *</Label>
               <div className="flex flex-wrap gap-2">
                 {BRANCHES.map((branch) => (
-                  <div key={branch} className="flex items-center space-x-2">
+                  <div key={String(branch)} className="flex items-center space-x-2">
                     <Checkbox
                       id={branch}
                       checked={selectedBranches.includes(branch)}
@@ -369,7 +369,7 @@ export default function NewDrivePage() {
               <Label>Eligible Batches (Graduation Year) *</Label>
               <div className="flex flex-wrap gap-2">
                 {GRADUATION_YEARS.map((year) => (
-                  <div key={year} className="flex items-center space-x-2">
+                  <div key={String(year)} className="flex items-center space-x-2">
                     <Checkbox
                       id={`batch-${year}`}
                       checked={selectedBatches.includes(year)}
@@ -408,7 +408,7 @@ export default function NewDrivePage() {
           <CardContent className="space-y-4">
             <div className="flex flex-wrap gap-2">
               {requiredSkills.map((skill) => (
-                <Badge key={skill} variant="secondary" className="gap-1">
+                <Badge key={String(skill)} variant="secondary" className="gap-1">
                   {skill}
                   <button onClick={() => removeSkill(skill, "required")}>
                     <X className="size-3" />
@@ -431,7 +431,7 @@ export default function NewDrivePage() {
               <span className="text-sm text-muted-foreground mr-2">Quick add:</span>
               {COMMON_SKILLS.slice(0, 10).map((skill) => (
                 <Button
-                  key={skill}
+                  key={String(skill)}
                   type="button"
                   variant="ghost"
                   size="sm"
@@ -455,7 +455,7 @@ export default function NewDrivePage() {
           <CardContent className="space-y-4">
             <div className="flex flex-wrap gap-2">
               {preferredSkills.map((skill) => (
-                <Badge key={skill} variant="outline" className="gap-1">
+                <Badge key={String(skill)} variant="outline" className="gap-1">
                   {skill}
                   <button onClick={() => removeSkill(skill, "preferred")}>
                     <X className="size-3" />

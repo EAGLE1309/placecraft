@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PersonalInfo, Education, Experience, Project, Certification, ResumeImprovementSnapshot } from "@/types";
 import { createResumeHistory, getStudentById } from "@/lib/firebase/firestore";
 import { uploadToR2 } from "@/lib/r2/upload";
+import { cleanUndefinedValues } from "@/lib/ai/resume-ai";
 
 export async function POST(request: NextRequest) {
   try {
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
       resumeUrl: uploadResult.downloadUrl,
       resumePath: uploadResult.path,
       generatedFrom: "improvement",
-      improvementData,
+      improvementData: cleanUndefinedValues(improvementData),
     });
 
     const analyzeRes = await fetch(`${request.nextUrl.origin}/api/resume/analyze`, {

@@ -188,20 +188,20 @@ export default function RecruiterDashboardPage() {
               ) : (
                 <div className="space-y-4">
                   {drives.slice(0, 4).map((drive) => (
-                    <div key={drive.id} className="flex items-center justify-between p-3 rounded-lg border">
+                    <div key={String(drive.id)} className="flex items-center justify-between p-3 rounded-lg border">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
                           <Building2 className="size-5 text-blue-600" />
                         </div>
                         <div>
-                          <h4 className="font-medium">{drive.role}</h4>
+                          <h4 className="font-medium">{(drive.role).toString()}</h4>
                           <p className="text-sm text-muted-foreground">
-                            {drive.applicationCount} applications
+                            {(drive.applicationCount).toString()} applications
                           </p>
                         </div>
                       </div>
                       <Badge variant={drive.status === "published" ? "default" : "secondary"}>
-                        {drive.status}
+                        {(drive.status).toString()}
                       </Badge>
                     </div>
                   ))}
@@ -234,15 +234,15 @@ export default function RecruiterDashboardPage() {
               ) : (
                 <div className="space-y-3">
                   {recentApplications.slice(0, 5).map((app) => (
-                    <div key={app.id} className="flex items-center justify-between p-3 rounded-lg border">
+                    <div key={String(app.id)} className="flex items-center justify-between p-3 rounded-lg border">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                           <span className="font-medium text-sm">
-                            {app.student?.name?.charAt(0) || "?"}
+                            {typeof app.student?.name === 'string' ? app.student.name.charAt(0) : "?"}
                           </span>
                         </div>
                         <div>
-                          <h4 className="font-medium">{app.student?.name || "Unknown"}</h4>
+                          <h4 className="font-medium">{typeof app.student?.name === 'string' ? app.student.name : "Unknown"}</h4>
                           <p className="text-sm text-muted-foreground">
                             Score: {app.resumeScore}/100 • Match: {app.skillMatch}%
                           </p>

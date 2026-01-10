@@ -151,7 +151,7 @@ export default function AdminDashboardPage() {
                           {drive.status}
                         </Badge>
                         <p className="text-xs text-muted-foreground mt-1">
-                          {drive.applicationCount} applications
+                          {(drive.applicationCount).toString()} applications
                         </p>
                       </div>
                     </div>

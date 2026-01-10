@@ -217,7 +217,7 @@ export default function RecruiterDrivesPage() {
         ) : (
           <div className="grid gap-4">
             {filteredDrives.map((drive) => (
-              <Card key={drive.id} className="hover:shadow-md transition-shadow">
+              <Card key={String(drive.id)} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-6">
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                     <div className="flex items-start gap-4">
@@ -244,7 +244,7 @@ export default function RecruiterDrivesPage() {
                           </span>
                           <span className="flex items-center gap-1">
                             <Users className="size-4" />
-                            {drive.applicationCount} applications
+                            {(drive.applicationCount).toString()} applications
                           </span>
                         </div>
                       </div>

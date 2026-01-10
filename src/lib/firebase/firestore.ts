@@ -16,6 +16,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { db } from "./config";
+import { cleanUndefinedValues } from "@/lib/ai/resume-ai";
 import {
   StudentProfile,
   RecruiterProfile,
@@ -31,6 +32,14 @@ import {
   ResumeHistory,
   ResumeImprovementSnapshot,
 } from "@/types";
+import {
+  StoredResumeAnalysis,
+  ExtractedResumeData,
+  ResumeAnalysisSuggestion,
+  ResumeLearningSuggestion,
+  ImprovedResumeRecord,
+  ImprovedResumeData,
+} from "@/types/resume";
 import { v4 as uuidv4 } from "uuid";
 
 // Collection names
@@ -42,6 +51,8 @@ const COLLECTIONS = {
   LEARNING_SUGGESTIONS: "learningSuggestions",
   RESUME_IMPROVEMENTS: "resumeImprovements",
   RESUME_HISTORY: "resumeHistory",
+  RESUME_ANALYSES: "resumeAnalyses",
+  IMPROVED_RESUMES: "improvedResumes",
 } as const;
 
 function getDb() {
@@ -109,10 +120,10 @@ export async function updateStudent(
   data: Partial<StudentProfile>
 ): Promise<void> {
   const docRef = doc(getDb(), COLLECTIONS.STUDENTS, id);
-  await updateDoc(docRef, {
+  await updateDoc(docRef, cleanUndefinedValues({
     ...data,
     updatedAt: serverTimestamp(),
-  });
+  }));
 }
 
 export async function getAllStudents(): Promise<StudentProfile[]> {
@@ -185,10 +196,10 @@ export async function updateRecruiter(
   data: Partial<RecruiterProfile>
 ): Promise<void> {
   const docRef = doc(getDb(), COLLECTIONS.RECRUITERS, id);
-  await updateDoc(docRef, {
+  await updateDoc(docRef, cleanUndefinedValues({
     ...data,
     updatedAt: serverTimestamp(),
-  });
+  }));
 }
 
 export async function getAllRecruiters(): Promise<RecruiterProfile[]> {
@@ -236,10 +247,10 @@ export async function updateDrive(
   data: Partial<PlacementDrive>
 ): Promise<void> {
   const docRef = doc(getDb(), COLLECTIONS.DRIVES, id);
-  await updateDoc(docRef, {
+  await updateDoc(docRef, cleanUndefinedValues({
     ...data,
     updatedAt: serverTimestamp(),
-  });
+  }));
 }
 
 export async function getAllDrives(): Promise<PlacementDrive[]> {
@@ -344,12 +355,12 @@ export async function createApplication(
   const batch = writeBatch(getDb());
 
   // Create application
-  batch.set(doc(getDb(), COLLECTIONS.APPLICATIONS, id), application);
+  batch.set(doc(getDb(), COLLECTIONS.APPLICATIONS, id), cleanUndefinedValues(application));
 
   // Increment drive application count
-  batch.update(doc(getDb(), COLLECTIONS.DRIVES, driveId), {
+  batch.update(doc(getDb(), COLLECTIONS.DRIVES, driveId), cleanUndefinedValues({
     applicationCount: increment(1),
-  });
+  }));
 
   await batch.commit();
 
@@ -366,18 +377,19 @@ export async function updateApplicationStatus(
   if (!application) throw new Error("Application not found");
 
   const now = Timestamp.now();
+  // Only include notes if defined to avoid Firestore undefined field error
   const statusChange = {
     status,
     changedBy,
     changedAt: now,
-    notes,
+    ...(notes !== undefined && { notes }),
   };
 
-  await updateDoc(doc(getDb(), COLLECTIONS.APPLICATIONS, id), {
+  await updateDoc(doc(getDb(), COLLECTIONS.APPLICATIONS, id), cleanUndefinedValues({
     status,
     statusHistory: [...application.statusHistory, statusChange],
     updatedAt: serverTimestamp(),
-  });
+  }));
 }
 
 export async function getApplicationsByStudent(studentId: string): Promise<Application[]> {
@@ -457,15 +469,15 @@ export async function createLearningSuggestion(
     createdAt: now,
   };
 
-  await setDoc(doc(getDb(), COLLECTIONS.LEARNING_SUGGESTIONS, id), data);
+  await setDoc(doc(getDb(), COLLECTIONS.LEARNING_SUGGESTIONS, id), cleanUndefinedValues(data));
   return { id, ...data };
 }
 
 export async function markSuggestionComplete(id: string): Promise<void> {
-  await updateDoc(doc(getDb(), COLLECTIONS.LEARNING_SUGGESTIONS, id), {
+  await updateDoc(doc(getDb(), COLLECTIONS.LEARNING_SUGGESTIONS, id), cleanUndefinedValues({
     completed: true,
     completedAt: serverTimestamp(),
-  });
+  }));
 }
 
 // ==================== RESUME IMPROVEMENTS ====================
@@ -497,10 +509,10 @@ export async function saveResumeImprovementData(
 
   if (existing) {
     // Update existing record
-    await updateDoc(doc(getDb(), COLLECTIONS.RESUME_IMPROVEMENTS, existing.id), {
+    await updateDoc(doc(getDb(), COLLECTIONS.RESUME_IMPROVEMENTS, existing.id), cleanUndefinedValues({
       ...data,
       updatedAt: serverTimestamp(),
-    });
+    }));
     return { ...existing, ...data, updatedAt: now };
   }
 
@@ -515,7 +527,7 @@ export async function saveResumeImprovementData(
     updatedAt: now,
   };
 
-  await setDoc(doc(getDb(), COLLECTIONS.RESUME_IMPROVEMENTS, id), newData);
+  await setDoc(doc(getDb(), COLLECTIONS.RESUME_IMPROVEMENTS, id), cleanUndefinedValues(newData));
   return { id, ...newData };
 }
 
@@ -523,10 +535,10 @@ export async function updateResumeImprovementResponses(
   id: string,
   responses: Record<string, string>
 ): Promise<void> {
-  await updateDoc(doc(getDb(), COLLECTIONS.RESUME_IMPROVEMENTS, id), {
+  await updateDoc(doc(getDb(), COLLECTIONS.RESUME_IMPROVEMENTS, id), cleanUndefinedValues({
     userResponses: responses,
     updatedAt: serverTimestamp(),
-  });
+  }));
 }
 
 export async function deleteLearningSuggestions(studentId: string): Promise<void> {
@@ -671,7 +683,7 @@ export async function createResumeHistory(
     createdAt: now,
   };
 
-  await setDoc(doc(getDb(), COLLECTIONS.RESUME_HISTORY, id), historyEntry);
+  await setDoc(doc(getDb(), COLLECTIONS.RESUME_HISTORY, id), cleanUndefinedValues(historyEntry));
   return { id, ...historyEntry };
 }
 
@@ -689,21 +701,21 @@ export async function setFinalResume(
   const allHistory = await getResumeHistory(studentId);
   allHistory.forEach((entry) => {
     if (entry.isFinal) {
-      batch.update(doc(getDb(), COLLECTIONS.RESUME_HISTORY, entry.id), {
+      batch.update(doc(getDb(), COLLECTIONS.RESUME_HISTORY, entry.id), cleanUndefinedValues({
         isFinal: false,
-      });
+      }));
     }
   });
 
   // Mark the selected resume as final
-  batch.update(doc(getDb(), COLLECTIONS.RESUME_HISTORY, historyId), {
+  batch.update(doc(getDb(), COLLECTIONS.RESUME_HISTORY, historyId), cleanUndefinedValues({
     isFinal: true,
-  });
+  }));
 
   // Update student profile with final resume ID
   const student = await getStudentByUid(historyEntry.studentId);
   if (student) {
-    batch.update(doc(getDb(), COLLECTIONS.STUDENTS, student.id), {
+    batch.update(doc(getDb(), COLLECTIONS.STUDENTS, student.id), cleanUndefinedValues({
       finalResumeId: historyId,
       resumeFileId: historyEntry.resumeFileId,
       resumeUrl: historyEntry.resumeUrl,
@@ -711,7 +723,7 @@ export async function setFinalResume(
       resumeScore: historyEntry.resumeScore,
       atsScore: historyEntry.atsScore,
       updatedAt: serverTimestamp(),
-    });
+    }));
   }
 
   await batch.commit();
@@ -729,4 +741,186 @@ export async function getFinalResume(studentId: string): Promise<ResumeHistory |
 
   if (snapshot.empty) return null;
   return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as ResumeHistory;
+}
+
+// ==================== RESUME ANALYSIS (NEW ARCHITECTURE) ====================
+
+/**
+ * Create a new resume analysis record
+ * This stores both the extracted structured data AND the analysis results
+ */
+export async function createResumeAnalysis(
+  studentId: string,
+  data: {
+    resumeFileId: string;
+    resumePath: string;
+    resumeUrl: string;
+    extractedData: ExtractedResumeData;
+    overallScore: number;
+    atsScore: number;
+    strengths: string[];
+    weaknesses: string[];
+    suggestions: ResumeAnalysisSuggestion[];
+    learningSuggestions: ResumeLearningSuggestion[];
+    targetRole?: string;
+  }
+): Promise<StoredResumeAnalysis> {
+  const id = uuidv4();
+  const now = Timestamp.now();
+
+  const analysisRecord: Omit<StoredResumeAnalysis, "id"> = {
+    studentId,
+    resumeFileId: data.resumeFileId,
+    resumePath: data.resumePath,
+    resumeUrl: data.resumeUrl,
+    extractedData: data.extractedData,
+    overallScore: data.overallScore,
+    atsScore: data.atsScore,
+    strengths: data.strengths,
+    weaknesses: data.weaknesses,
+    suggestions: data.suggestions,
+    learningSuggestions: data.learningSuggestions,
+    targetRole: data.targetRole,
+    analyzedAt: now,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  await setDoc(doc(getDb(), COLLECTIONS.RESUME_ANALYSES, id), cleanUndefinedValues(analysisRecord));
+
+  // Also update student profile with scores and latest analysis reference
+  await updateDoc(doc(getDb(), COLLECTIONS.STUDENTS, studentId), cleanUndefinedValues({
+    resumeScore: data.overallScore,
+    atsScore: data.atsScore,
+    latestAnalysisId: id,
+    updatedAt: serverTimestamp(),
+  }));
+
+  return { id, ...analysisRecord };
+}
+
+/**
+ * Get the latest resume analysis for a student
+ */
+export async function getLatestResumeAnalysis(studentId: string): Promise<StoredResumeAnalysis | null> {
+  const analysesRef = collection(getDb(), COLLECTIONS.RESUME_ANALYSES);
+  const q = query(
+    analysesRef,
+    where("studentId", "==", studentId),
+    orderBy("createdAt", "desc"),
+    limit(1)
+  );
+  const snapshot = await getDocs(q);
+
+  if (snapshot.empty) return null;
+  return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as StoredResumeAnalysis;
+}
+
+/**
+ * Get a specific resume analysis by ID
+ */
+export async function getResumeAnalysisById(id: string): Promise<StoredResumeAnalysis | null> {
+  const docRef = doc(getDb(), COLLECTIONS.RESUME_ANALYSES, id);
+  const snapshot = await getDoc(docRef);
+
+  if (!snapshot.exists()) return null;
+  return { id: snapshot.id, ...snapshot.data() } as StoredResumeAnalysis;
+}
+
+/**
+ * Get all resume analyses for a student
+ */
+export async function getResumeAnalyses(studentId: string): Promise<StoredResumeAnalysis[]> {
+  const analysesRef = collection(getDb(), COLLECTIONS.RESUME_ANALYSES);
+  const q = query(
+    analysesRef,
+    where("studentId", "==", studentId),
+    orderBy("createdAt", "desc")
+  );
+  const snapshot = await getDocs(q);
+
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as StoredResumeAnalysis[];
+}
+
+/**
+ * Get resume analysis by resume file ID
+ */
+export async function getResumeAnalysisByFileId(resumeFileId: string): Promise<StoredResumeAnalysis | null> {
+  const analysesRef = collection(getDb(), COLLECTIONS.RESUME_ANALYSES);
+  const q = query(
+    analysesRef,
+    where("resumeFileId", "==", resumeFileId),
+    orderBy("createdAt", "desc"),
+    limit(1)
+  );
+  const snapshot = await getDocs(q);
+
+  if (snapshot.empty) return null;
+  return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as StoredResumeAnalysis;
+}
+
+// ==================== IMPROVED RESUMES ====================
+
+/**
+ * Create an improved resume record
+ */
+export async function createImprovedResume(
+  studentId: string,
+  data: {
+    sourceAnalysisId: string;
+    improvedData: ImprovedResumeData;
+    pdfFileId?: string;
+    pdfPath?: string;
+    pdfUrl?: string;
+    estimatedScore?: number;
+  }
+): Promise<ImprovedResumeRecord> {
+  const id = uuidv4();
+  const now = Timestamp.now();
+
+  const record: Omit<ImprovedResumeRecord, "id"> = {
+    studentId,
+    sourceAnalysisId: data.sourceAnalysisId,
+    improvedData: data.improvedData,
+    pdfFileId: data.pdfFileId,
+    pdfPath: data.pdfPath,
+    pdfUrl: data.pdfUrl,
+    estimatedScore: data.estimatedScore,
+    createdAt: now,
+  };
+
+  await setDoc(doc(getDb(), COLLECTIONS.IMPROVED_RESUMES, id), cleanUndefinedValues(record));
+  return { id, ...record };
+}
+
+/**
+ * Get improved resumes for a student
+ */
+export async function getImprovedResumes(studentId: string): Promise<ImprovedResumeRecord[]> {
+  const resumesRef = collection(getDb(), COLLECTIONS.IMPROVED_RESUMES);
+  const q = query(
+    resumesRef,
+    where("studentId", "==", studentId),
+    orderBy("createdAt", "desc")
+  );
+  const snapshot = await getDocs(q);
+
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as ImprovedResumeRecord[];
+}
+
+/**
+ * Get a specific improved resume by ID
+ */
+export async function getImprovedResumeById(id: string): Promise<ImprovedResumeRecord | null> {
+  const docRef = doc(getDb(), COLLECTIONS.IMPROVED_RESUMES, id);
+  const snapshot = await getDoc(docRef);
+
+  if (!snapshot.exists()) return null;
+  return { id: snapshot.id, ...snapshot.data() } as ImprovedResumeRecord;
 }
