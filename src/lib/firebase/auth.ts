@@ -7,7 +7,7 @@ import {
   User,
 } from "firebase/auth";
 import { auth } from "./config";
-import { ALLOWED_ADMIN_EMAILS, ALLOWED_RECRUITER_EMAILS, ALLOWED_STUDENT_EMAILS } from "../constants";
+import { ALLOWED_ADMIN_EMAILS, ALLOWED_RECRUITER_EMAILS } from "../constants";
 
 const googleProvider = new GoogleAuthProvider();
 
@@ -89,7 +89,7 @@ export const signOut = async (): Promise<void> => {
 
 export const onAuthChange = (callback: (user: User | null) => void) => {
   if (!auth) {
-    return () => {};
+    return () => { };
   }
   return onAuthStateChanged(auth, callback);
 };
@@ -97,18 +97,14 @@ export const onAuthChange = (callback: (user: User | null) => void) => {
 // Use onIdTokenChanged to keep cookie in sync with Firebase auth state
 export const onTokenChange = (callback: (user: User | null) => void) => {
   if (!auth) {
-    return () => {};
+    return () => { };
   }
   return onIdTokenChanged(auth, callback);
 };
 
 export const isEmailAllowed = (email: string | null): boolean => {
-  if (!email) return false;
-  return (
-    ALLOWED_ADMIN_EMAILS.includes(email) ||
-    ALLOWED_RECRUITER_EMAILS.includes(email) ||
-    ALLOWED_STUDENT_EMAILS.includes(email)
-  );
+  // Anyone with a valid email is allowed (students are default)
+  return !!email;
 };
 
 export const isAdminEmail = (email: string | null): boolean => {
@@ -123,16 +119,16 @@ export const isRecruiterEmail = (email: string | null): boolean => {
 
 export const isStudentEmail = (email: string | null): boolean => {
   if (!email) return false;
-  return ALLOWED_STUDENT_EMAILS.includes(email);
+  // Anyone who is not admin or recruiter is a student
+  return !ALLOWED_ADMIN_EMAILS.includes(email) && !ALLOWED_RECRUITER_EMAILS.includes(email);
 };
 
 export const getUserRole = (email: string | null): UserRole => {
   if (!email) return null;
   if (ALLOWED_ADMIN_EMAILS.includes(email)) return "admin";
   if (ALLOWED_RECRUITER_EMAILS.includes(email)) return "recruiter";
-  if (ALLOWED_STUDENT_EMAILS.includes(email)) return "student";
-  return null;
-
+  // Anyone else is a student by default
+  return "student";
 };
 
 export const getRoleRedirectPath = (role: UserRole): string => {

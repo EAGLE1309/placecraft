@@ -97,7 +97,7 @@ export function useAuth() {
 
   const refreshProfile = async () => {
     if (!user || !role) return;
-    
+
     try {
       if (role === "student") {
         const studentProfile = await getStudentByUid(user.uid);

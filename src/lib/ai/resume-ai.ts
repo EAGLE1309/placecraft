@@ -28,11 +28,11 @@ import { v4 as uuidv4 } from "uuid";
 export function cleanUndefinedValues(obj: any): any {
   if (obj === null || obj === undefined) return null;
   if (typeof obj !== 'object') return obj;
-  
+
   if (Array.isArray(obj)) {
     return obj.map(cleanUndefinedValues);
   }
-  
+
   const cleaned: any = {};
   for (const [key, value] of Object.entries(obj)) {
     if (value !== undefined) {
@@ -438,7 +438,7 @@ Be thorough but realistic in scoring. Most student resumes score 40-70.`;
     const result = await model.generateContent(prompt);
     const response = result.response;
     const text = response.text();
-    
+
     const parsed = JSON.parse(text) as GeminiResumeExtractionResponse;
 
     // Transform to our internal format with IDs for suggestions
@@ -660,12 +660,12 @@ Return the improved resume in the exact same structure as the input.`;
     return improvedData;
   } catch (error: any) {
     console.error("[Resume AI] Improvement failed:", error);
-    
+
     // Handle quota exceeded errors specifically
     if (error.message?.includes('quota exceeded') || error.message?.includes('429')) {
       throw new Error("API quota exceeded. Please try again later or upgrade your plan.");
     }
-    
+
     throw new Error("Failed to improve resume. Please try again later.");
   }
 }

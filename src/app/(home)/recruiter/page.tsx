@@ -73,7 +73,7 @@ export default function RecruiterDashboardPage() {
     fetchData();
   }, [recruiterProfile]);
 
-  if (loading || !recruiterProfile) {
+  if (loading) {
     return (
       <ContentLayout title="Dashboard">
         <div className="flex items-center justify-center h-64">
@@ -100,8 +100,8 @@ export default function RecruiterDashboardPage() {
         {/* Welcome */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Welcome, {recruiterProfile.name}!</h1>
-            <p className="text-muted-foreground">{recruiterProfile.company} - {recruiterProfile.designation}</p>
+            <h1 className="text-2xl font-bold">Welcome, {recruiterProfile?.name}!</h1>
+            <p className="text-muted-foreground">{recruiterProfile?.company} - {recruiterProfile?.designation}</p>
           </div>
           <Link href="/recruiter/drives/new">
             <Button>
