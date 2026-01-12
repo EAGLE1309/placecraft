@@ -1,40 +1,69 @@
-# 📄 PRODUCT REQUIREMENTS DOCUMENT (FINAL)
+# 📄 Product Requirements Document
 
-## Project Name
-
-**Placecraft**
-
-## Product Type
-
-Centralized Placement & Internship Management Platform
+> **Project:** Placecraft  
+> **Type:** AI-Powered Placement & Internship Management Platform  
+> **Version:** 1.0  
+> **Status:** Locked & Implemented
 
 ---
 
-## 1. Product Vision
+## 📋 Table of Contents
 
-Placecraft is a **college-first, AI-powered placement platform** that unifies:
-
-* Student onboarding & resume creation
-* Skill gap detection + learning suggestions
-* Internship & job applications
-* Recruiter shortlisting
-* Placement cell governance
-
-The platform replaces fragmented tools (WhatsApp, Excel, emails) with a **single controlled system** powered by **Google-native tools**.
+1. [Product Vision](#-product-vision)
+2. [Core Objectives](#-core-objectives)
+3. [User Roles](#-user-roles)
+4. [Features & Workflows](#-features--workflows)
+5. [Technical Requirements](#-technical-requirements)
+6. [Non-Functional Requirements](#-non-functional-requirements)
+7. [Future Scope](#-future-scope)
 
 ---
 
-## 2. Core Objectives
+## 🎯 Product Vision
 
-* Improve student placement readiness
-* Reduce recruiter screening effort
-* Give placement cells full control & visibility
-* Use **maximum Google tools** (hackathon focus)
-* Ensure zero-friction onboarding (resume optional)
+Placecraft is a **college-first, AI-powered placement platform** that unifies the entire campus recruitment process into a single, intelligent system.
+
+### Problem Statement
+
+Current campus placement processes are fragmented across:
+- WhatsApp groups for announcements
+- Excel sheets for tracking
+- Email chains for communication
+- Manual resume screening
+- Disconnected application workflows
+
+### Solution
+
+A centralized platform that provides:
+- **AI-driven resume analysis** and improvement
+- **Skill gap detection** with learning recommendations
+- **Streamlined application workflow** from posting to selection
+- **Role-based access** for students, admins, and recruiters
+- **Real-time tracking** and analytics
+
+### Key Differentiators
+
+1. **AI-First Approach** - Google Gemini powers resume analysis and generation
+2. **Zero-Friction Onboarding** - Resume upload optional, AI can generate from profile
+3. **Intelligent Matching** - Automatic skill gap analysis and eligibility filtering
+4. **Complete Governance** - Placement cell maintains full control and visibility
+5. **Google Ecosystem** - Built on Firebase, Firestore, and Gemini AI
 
 ---
 
-## 3. User Roles
+## 🎯 Core Objectives
+
+| Objective | Description | Success Metric |
+|-----------|-------------|----------------|
+| **Student Readiness** | Improve placement preparation with AI feedback | 80%+ students with resume score >70 |
+| **Recruiter Efficiency** | Reduce screening time with pre-filtered candidates | 50% reduction in screening time |
+| **Admin Control** | Centralized management and visibility | 100% placement activities tracked |
+| **User Experience** | Seamless, intuitive interface for all roles | <2 second page load times |
+| **Scalability** | Support multiple colleges and thousands of students | Handle 10K+ students per college |
+
+---
+
+## 👥 User Roles
 
 ### 🎓 Student
 
@@ -229,102 +258,145 @@ Placement cell can override if required.
 
 ---
 
-## 8. Google Drive API — Core Usage
+## 8. File Storage Architecture
 
-### Why Google Drive
+### Storage Solution: Cloudflare R2
 
-* Native Google ecosystem
-* Versioning
-* Familiar UX
-* Strong hackathon alignment
+**Primary storage for all resume files**
 
-### Usage
+#### Why Cloudflare R2?
+- **S3-compatible API** - Easy integration with existing tools
+- **No egress fees** - Cost-effective for file downloads
+- **Global CDN** - Fast access worldwide
+- **Secure** - Private bucket with signed URL access
 
-* Store:
-
-  * Uploaded resumes
-  * AI-generated resumes
-* Maintain:
-
-  * Resume version history
-  * Locked resume snapshots per application
-* Store only Drive File IDs in database
-* Files accessed via backend only (secure)
+#### Implementation
+- **Upload Flow:** Student uploads → R2 bucket → Signed URL returned
+- **Access Control:** Files accessed via backend-generated signed URLs only
+- **Organization:** Files stored in student-specific folders (`resumes/{studentId}/`)
+- **Versioning:** Multiple resume versions maintained per student
+- **Security:** Private bucket, temporary signed URLs with expiration
 
 ---
 
-## 9. Tech Stack (FINAL)
+## 🛠️ Technical Requirements
 
-### Frontend
+### Frontend Stack
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| **Next.js** | 16 | React framework with App Router |
+| **TypeScript** | 5 | Type-safe development |
+| **TailwindCSS** | 4 | Utility-first styling |
+| **Radix UI** | Latest | Accessible UI components |
+| **Zustand** | 5 | State management |
 
-* Next.js 16
-* TypeScript
-* App Router
+### Backend & Services
+| Technology | Purpose |
+|------------|---------|
+| **Firebase Auth** | Google OAuth authentication |
+| **Firestore** | NoSQL database for users, applications, drives |
+| **Next.js API Routes** | Serverless API endpoints |
+| **Google Gemini AI** | Resume analysis and generation |
+| **Cloudflare R2** | Resume file storage |
+| **Puppeteer** | PDF generation |
 
-### Backend & Platform
-
-* **Firebase**
-
-  * Authentication (Google Sign-In)
-  * Firestore (users, applications, drives)
-  * Cloud Functions (resume parsing, AI jobs)
-
-### AI
-
-* **Gemini AI (Free Tier)**
-
-  * Resume parsing
-  * Resume scoring
-  * Resume generation
-  * Learning suggestions
-
-### Storage
-
-* **Google Drive API** – primary
-* **Cloudflare R2** – optional mirroring / downloads
+### AI Capabilities
+- **Resume Parsing** - Extract text and structure from PDFs
+- **Resume Scoring** - Quality and ATS compatibility scores (0-100)
+- **Resume Generation** - Create ATS-friendly resumes from profile data
+- **Skill Gap Analysis** - Compare skills vs job requirements
+- **Learning Suggestions** - Personalized skill improvement recommendations
+- **Content Optimization** - Improve bullet points and descriptions
 
 ---
 
-## 10. Non-Functional Requirements
+## 📊 Non-Functional Requirements
 
 ### Performance
-
-* Resume parsing < 30 seconds
-* Dashboard load < 2 seconds
+| Metric | Target | Implementation |
+|--------|--------|----------------|
+| **Page Load** | < 2 seconds | Server-side rendering, code splitting |
+| **Resume Parsing** | < 30 seconds | Local parsing first, AI fallback |
+| **API Response** | < 500ms | Firestore caching, indexed queries |
+| **AI Response** | < 10 seconds | Cached responses, rate limiting |
 
 ### Security
-
-* Role-based access control
-* Drive file access via backend only
-* Resume version locking per application
+- ✅ **Role-Based Access Control (RBAC)** - Firestore security rules
+- ✅ **API Key Protection** - Server-side only, environment variables
+- ✅ **File Access Control** - Signed URLs with expiration
+- ✅ **Input Validation** - All user inputs sanitized
+- ✅ **Session Management** - Firebase Auth tokens
+- ✅ **Resume Version Locking** - Immutable snapshots per application
 
 ### Scalability
+| Aspect | Capacity | Scaling Strategy |
+|--------|----------|------------------|
+| **Students** | 10,000+ per college | Horizontal scaling via serverless |
+| **Concurrent Users** | 1,000+ | Next.js auto-scaling on Vercel |
+| **File Storage** | Unlimited | Cloudflare R2 scales automatically |
+| **Database** | 1M+ documents | Firestore indexes, caching |
+| **AI Requests** | 1,500/day (free tier) | Caching reduces calls by 70% |
 
-* Supports multiple colleges
-* Thousands of students per college
-
----
-
-## 11. Hackathon Strengths Summary
-
-* Heavy **Google ecosystem usage**
-* AI with real, measurable impact
-* Solves real campus placement problems
-* Clean role separation & governance
-* Practical, deployable architecture
-
----
-
-## 12. Future Scope (Post-MVP)
-
-* Interview scheduling
-* Alumni referrals
-* Course integrations
-* Multi-college SaaS mode
-* Placement analytics dashboards
+### Reliability
+- **Uptime Target:** 99.9%
+- **Data Backup:** Firestore automatic backups
+- **Error Handling:** Graceful degradation, user-friendly messages
+- **Monitoring:** Firebase Analytics, error logging
 
 ---
 
-## 13. Status
+## 🚀 Future Scope (Post-MVP)
 
-✅ **PRD LOCKED**
+### Phase 2 Features
+- **Interview Scheduling** - Calendar integration for interview slots
+- **Video Interviews** - Built-in video call functionality
+- **Alumni Network** - Referral system and mentorship
+- **Course Integration** - Link learning suggestions to online courses
+- **Advanced Analytics** - Placement trends, success rates, insights
+
+### Phase 3 Features
+- **Multi-College SaaS** - White-label solution for multiple institutions
+- **Mobile Apps** - Native iOS and Android applications
+- **AI Interview Prep** - Mock interviews with AI feedback
+- **Skill Assessments** - Integrated coding challenges and tests
+- **Company Reviews** - Student feedback on companies and roles
+
+### Enterprise Features
+- **Custom Branding** - College-specific themes and logos
+- **API Access** - Third-party integrations
+- **Advanced Reporting** - Custom reports and exports
+- **Dedicated Support** - Priority support for enterprise clients
+
+---
+
+## 📈 Success Metrics
+
+### Student Metrics
+- Resume score improvement (target: +20 points average)
+- Application success rate (target: 50%+ shortlist rate)
+- Time to first application (target: < 1 hour from signup)
+- Learning engagement (target: 60%+ complete at least 1 suggestion)
+
+### Admin Metrics
+- Placement tracking coverage (target: 100% of drives)
+- Time saved vs manual process (target: 80% reduction)
+- Data accuracy (target: 95%+ accurate records)
+
+### Recruiter Metrics
+- Screening time reduction (target: 50% faster)
+- Quality of candidates (target: 80%+ meet requirements)
+- Application completion rate (target: 90%+ complete profiles)
+
+---
+
+## 📚 Related Documentation
+
+- [README.md](./README.md) - Setup and installation guide
+- [architecture-diagram.md](./architecture-diagram.md) - Technical architecture
+- [.env.example](./.env.example) - Environment configuration template
+
+---
+
+**Document Version:** 1.0  
+**Last Updated:** January 2026  
+**Status:** ✅ Locked & Implemented
