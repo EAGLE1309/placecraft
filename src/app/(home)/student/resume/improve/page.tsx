@@ -229,17 +229,23 @@ export default function ResumeImprovePage() {
               </div>
 
               <div className="flex gap-3">
-                <Button asChild>
-                  <a href={improvedResult.pdfUrl} target="_blank" rel="noopener noreferrer">
-                    <Download className="size-4 mr-2" />
-                    Download Improved Resume
-                  </a>
+                <Button
+                  onClick={() => {
+                    // Open PDF in new tab for download
+                    window.open(improvedResult.pdfUrl, '_blank', 'noopener,noreferrer');
+                  }}
+                >
+                  <Download className="size-4 mr-2" />
+                  Download Improved Resume
                 </Button>
-                <Button variant="outline" asChild>
-                  <a href={improvedResult.pdfUrl} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="size-4 mr-2" />
-                    View PDF
-                  </a>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    window.open(improvedResult.pdfUrl, '_blank', 'noopener,noreferrer');
+                  }}
+                >
+                  <ExternalLink className="size-4 mr-2" />
+                  View PDF
                 </Button>
                 <Button variant="outline" asChild>
                   <Link href="/student/resume/history">
@@ -283,7 +289,7 @@ export default function ResumeImprovePage() {
               AI Resume Improvement
             </CardTitle>
             <CardDescription>
-              Our AI will enhance your resume based on the analysis suggestions, improving content, 
+              Our AI will enhance your resume based on the analysis suggestions, improving content,
               adding action verbs, and optimizing for ATS systems.
             </CardDescription>
           </CardHeader>
@@ -341,8 +347,8 @@ export default function ResumeImprovePage() {
             </div>
 
             <div className="pt-4 border-t">
-              <Button 
-                onClick={handleImproveResume} 
+              <Button
+                onClick={handleImproveResume}
                 disabled={improving}
                 className="w-full bg-purple-600 hover:bg-purple-700"
                 size="lg"

@@ -713,7 +713,8 @@ export async function setFinalResume(
   }));
 
   // Update student profile with final resume ID
-  const student = await getStudentByUid(historyEntry.studentId);
+  // historyEntry.studentId is the document ID, not UID, so use getStudentById
+  const student = await getStudentById(historyEntry.studentId);
   if (student) {
     batch.update(doc(getDb(), COLLECTIONS.STUDENTS, student.id), cleanUndefinedValues({
       finalResumeId: historyId,

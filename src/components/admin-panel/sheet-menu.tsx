@@ -8,7 +8,8 @@ import {
   SheetHeader,
   SheetContent,
   SheetTrigger,
-  SheetTitle
+  SheetTitle,
+  SheetDescription
 } from "@/components/ui/sheet";
 import { APP_CONFIG } from "@/lib/constants";
 
@@ -32,6 +33,9 @@ export function SheetMenu() {
               <SheetTitle className="font-bold text-lg">{APP_CONFIG.name}</SheetTitle>
             </Link>
           </Button>
+          <SheetDescription className="sr-only">
+            Navigation menu
+          </SheetDescription>
         </SheetHeader>
         <Menu isOpen />
       </SheetContent>

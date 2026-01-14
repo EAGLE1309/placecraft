@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { uploadResume } from "@/lib/r2/storage";
-import { updateStudent, createResumeAnalysis, createLearningSuggestion } from "@/lib/firebase/firestore";
+import { updateStudent, createResumeAnalysis, createLearningSuggestion, createResumeHistory } from "@/lib/firebase/firestore";
 import { extractTextFromPDF, extractAndAnalyzeResume, getQuotaInfo } from "@/lib/ai/resume-ai";
 
 /**
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     // Step 2: Extract text from PDF
     const fileBuffer = Buffer.from(await file.arrayBuffer());
     let resumeText: string;
-    
+
     try {
       resumeText = await extractTextFromPDF(fileBuffer);
     } catch (extractError) {
@@ -102,11 +102,11 @@ export async function POST(request: NextRequest) {
     } catch (analysisError) {
       console.error("[Resume Upload] Analysis failed:", analysisError);
       const errorMessage = analysisError instanceof Error ? analysisError.message : "Failed to analyze resume";
-      
+
       // Check if it's a rate limit error
       if (errorMessage.includes("Rate limit")) {
         return NextResponse.json(
-          { 
+          {
             success: true,
             fileId: uploadResult.fileId,
             downloadUrl: uploadResult.downloadUrl,
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
           { status: 429 }
         );
       }
-      
+
       return NextResponse.json({
         success: true,
         fileId: uploadResult.fileId,
@@ -178,6 +178,18 @@ export async function POST(request: NextRequest) {
     });
 
     console.log(`[Resume Upload] Extracted data stored in student profile`);
+
+    // Create resume history entry for the uploaded resume
+    await createResumeHistory(studentId, {
+      resumeFileId: uploadResult.fileId,
+      resumeUrl: uploadResult.downloadUrl,
+      resumePath: uploadResult.fullPath,
+      resumeScore: analysisResult.overallScore,
+      atsScore: analysisResult.atsScore,
+      generatedFrom: "upload",
+    });
+
+    console.log(`[Resume Upload] Resume history entry created`);
 
     // Save learning suggestions to separate collection for learning system
     for (const suggestion of analysisResult.learningSuggestions.slice(0, 5)) {

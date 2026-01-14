@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
       resumePath: uploadResult.path,
       resumeScore: Math.min(100, analysis.overallScore + 15),
       atsScore: Math.min(100, analysis.atsScore + 10),
-      generatedFrom: "ai-improvement",
+      generatedFrom: "improvement",
       improvementData: cleanUndefinedValues({
         personalInfo: {
           name: improvedData.personalInfo.name || "",

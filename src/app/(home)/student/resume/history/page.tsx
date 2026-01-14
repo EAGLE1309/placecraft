@@ -249,11 +249,20 @@ export default function ResumeHistoryPage() {
                             View
                           </a>
                         </Button>
-                        <Button variant="outline" size="sm" asChild>
-                          <a href={item.resumeUrl} download>
-                            <Download className="size-4 mr-2" />
-                            Download
-                          </a>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            // For cross-origin URLs, open in new tab and let browser handle download
+                            const link = document.createElement('a');
+                            link.href = item.resumeUrl;
+                            link.target = '_blank';
+                            link.rel = 'noopener noreferrer';
+                            link.click();
+                          }}
+                        >
+                          <Download className="size-4 mr-2" />
+                          Download
                         </Button>
                         {!item.isFinal && (
                           <Button
