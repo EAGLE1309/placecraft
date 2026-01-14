@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { uploadResume } from "@/lib/r2/storage";
 import { updateStudent, createResumeAnalysis, createLearningSuggestion, createResumeHistory } from "@/lib/firebase/firestore";
 import { extractTextFromPDF, extractAndAnalyzeResume, getQuotaInfo } from "@/lib/ai/resume-ai";
+import { verifyAuth, requireAuth } from "@/lib/firebase/auth-api";
 
 /**
  * Resume Upload API - New Architecture
@@ -15,6 +16,11 @@ import { extractTextFromPDF, extractAndAnalyzeResume, getQuotaInfo } from "@/lib
  */
 export async function POST(request: NextRequest) {
   try {
+    // Verify authentication
+    const authResult = await verifyAuth(request);
+    const authError = requireAuth(authResult);
+    if (authError) return authError;
+
     const formData = await request.formData();
     const file = formData.get("file") as File;
     const studentId = formData.get("studentId") as string;

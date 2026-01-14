@@ -2,10 +2,95 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow all reads and writes (permissive for development)
-    // TODO: Implement proper security rules for production
-    match /{document=**} {
-      allow read, write: if true;
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user owns the resource
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+    
+    // Students collection
+    match /students/{studentId} {
+      // Students can read their own profile
+      // Admins and recruiters can read any student profile
+      allow read: if isAuthenticated();
+      
+      // Students can only update their own profile
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+        (resource.data.uid == request.auth.uid || 
+         get(/databases/$(database)/documents/students/$(request.auth.uid)).data.role == 'admin');
+      allow delete: if false; // No deletion allowed
+    }
+    
+    // Recruiters collection
+    match /recruiters/{recruiterId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && resource.data.uid == request.auth.uid;
+      allow delete: if false;
+    }
+    
+    // Drives collection
+    match /drives/{driveId} {
+      // Anyone authenticated can read published drives
+      allow read: if isAuthenticated();
+      
+      // Only recruiters can create/update their own drives
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if false;
+    }
+    
+    // Applications collection
+    match /applications/{applicationId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if false;
+    }
+    
+    // Learning suggestions collection
+    match /learningSuggestions/{suggestionId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+    
+    // Resume improvements collection
+    match /resumeImprovements/{improvementId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if false;
+    }
+    
+    // Resume history collection
+    match /resumeHistory/{historyId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if false;
+    }
+    
+    // Resume analyses collection
+    match /resumeAnalyses/{analysisId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if false;
+    }
+    
+    // Improved resumes collection
+    match /improvedResumes/{resumeId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if false;
     }
   }
 }

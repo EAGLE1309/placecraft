@@ -36,6 +36,7 @@ export default function AdminDrivesPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedDrive, setSelectedDrive] = useState<PlacementDrive | null>(null);
   const [creating, setCreating] = useState(false);
+  const [updatingDriveId, setUpdatingDriveId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     company: "",
@@ -62,7 +63,18 @@ export default function AdminDrivesPage() {
   const fetchDrives = async () => {
     try {
       const data = await getAllDrives();
-      setDrives(data);
+      // Ensure all drives have required fields with proper types
+      const normalizedDrives = data.map(drive => ({
+        ...drive,
+        applicationCount: typeof drive.applicationCount === 'number' ? drive.applicationCount : 0,
+        eligibility: {
+          branches: Array.isArray(drive.eligibility?.branches) ? drive.eligibility.branches : [],
+          minCgpa: typeof drive.eligibility?.minCgpa === 'number' ? drive.eligibility.minCgpa : 0,
+          batches: Array.isArray(drive.eligibility?.batches) ? drive.eligibility.batches : [],
+        },
+        requiredSkills: Array.isArray(drive.requiredSkills) ? drive.requiredSkills : [],
+      }));
+      setDrives(normalizedDrives);
     } catch (error) {
       console.error("Failed to fetch drives:", error);
     } finally {
@@ -133,11 +145,14 @@ export default function AdminDrivesPage() {
   };
 
   const handleStatusChange = async (driveId: string, newStatus: PlacementDrive["status"]) => {
+    setUpdatingDriveId(driveId);
     try {
       await updateDrive(driveId, { status: newStatus });
       await fetchDrives();
     } catch (error) {
       console.error("Failed to update drive status:", error);
+    } finally {
+      setUpdatingDriveId(null);
     }
   };
 
@@ -268,7 +283,7 @@ export default function AdminDrivesPage() {
                           {toDate(drive.applicationDeadline).toLocaleDateString()}
                         </td>
                         <td className="p-4">
-                          <span className="font-medium">{drive.applicationCount}</span>
+                          <span className="font-medium">{typeof drive.applicationCount === 'number' ? drive.applicationCount : 0}</span>
                         </td>
                         <td className="p-4">
                           <Badge className={getStatusColor(drive.status)}>
@@ -289,8 +304,9 @@ export default function AdminDrivesPage() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleStatusChange(drive.id, "published")}
+                                disabled={updatingDriveId === drive.id}
                               >
-                                Publish
+                                {updatingDriveId === drive.id ? <Spinner className="size-4" /> : "Publish"}
                               </Button>
                             )}
                             {drive.status === "published" && (
@@ -298,8 +314,9 @@ export default function AdminDrivesPage() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleStatusChange(drive.id, "closed")}
+                                disabled={updatingDriveId === drive.id}
                               >
-                                Close
+                                {updatingDriveId === drive.id ? <Spinner className="size-4" /> : "Close"}
                               </Button>
                             )}
                           </div>
@@ -546,25 +563,25 @@ export default function AdminDrivesPage() {
                   </div>
                   <div>
                     <span className="text-muted-foreground">Applications:</span>{" "}
-                    <span className="font-medium">{selectedDrive.applicationCount}</span>
+                    <span className="font-medium">{typeof selectedDrive.applicationCount === 'number' ? selectedDrive.applicationCount : 0}</span>
                   </div>
                 </div>
 
                 <div>
                   <h4 className="font-medium mb-2">Eligibility</h4>
                   <div className="text-sm space-y-1">
-                    <p><span className="text-muted-foreground">Branches:</span> {selectedDrive.eligibility.branches.join(", ")}</p>
+                    <p><span className="text-muted-foreground">Branches:</span> {Array.isArray(selectedDrive.eligibility.branches) ? selectedDrive.eligibility.branches.join(", ") : ""}</p>
                     <p><span className="text-muted-foreground">Min CGPA:</span> {selectedDrive.eligibility.minCgpa}</p>
-                    <p><span className="text-muted-foreground">Batches:</span> {selectedDrive.eligibility.batches.join(", ")}</p>
+                    <p><span className="text-muted-foreground">Batches:</span> {Array.isArray(selectedDrive.eligibility.batches) ? selectedDrive.eligibility.batches.join(", ") : ""}</p>
                   </div>
                 </div>
 
                 <div>
                   <h4 className="font-medium mb-2">Required Skills</h4>
                   <div className="flex flex-wrap gap-1">
-                    {selectedDrive.requiredSkills.map((skill) => (
+                    {Array.isArray(selectedDrive.requiredSkills) ? selectedDrive.requiredSkills.map((skill) => (
                       <Badge key={skill} variant="outline">{skill}</Badge>
-                    ))}
+                    )) : null}
                   </div>
                 </div>
               </div>

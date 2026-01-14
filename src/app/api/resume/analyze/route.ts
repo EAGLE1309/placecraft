@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { extractTextFromPDF, extractAndAnalyzeResume, getQuotaInfo, cleanUndefinedValues } from "@/lib/ai/resume-ai";
-import { 
-  getLatestResumeAnalysis, 
+import {
+  getLatestResumeAnalysis,
   getResumeAnalysisById,
   createResumeAnalysis,
   createLearningSuggestion,
   getStudentById,
 } from "@/lib/firebase/firestore";
+import { verifyAuth, requireAuth } from "@/lib/firebase/auth-api";
 
 /**
  * Resume Analysis API - New Architecture
@@ -19,6 +20,11 @@ import {
 
 export async function GET(request: NextRequest) {
   try {
+    // Verify authentication
+    const authResult = await verifyAuth(request);
+    const authError = requireAuth(authResult);
+    if (authError) return authError;
+
     const { searchParams } = new URL(request.url);
     const studentId = searchParams.get("studentId");
     const analysisId = searchParams.get("analysisId");
@@ -42,7 +48,7 @@ export async function GET(request: NextRequest) {
 
     if (!analysis) {
       return NextResponse.json(
-        { 
+        {
           error: "No analysis found",
           hasAnalysis: false,
         },
@@ -79,6 +85,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Verify authentication
+    const authResult = await verifyAuth(request);
+    const authError = requireAuth(authResult);
+    if (authError) return authError;
+
     const body = await request.json();
     const { downloadUrl, studentId, targetRole, forceReanalyze } = body;
 
@@ -139,10 +150,10 @@ export async function POST(request: NextRequest) {
     const quota = getQuotaInfo();
     if (quota.minuteRemaining <= 0) {
       return NextResponse.json(
-        { 
+        {
           error: "Rate limit reached. Please wait before analyzing.",
           retryAfter: quota.resetInSeconds,
-          quota 
+          quota
         },
         { status: 429 }
       );
@@ -157,7 +168,7 @@ export async function POST(request: NextRequest) {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         console.log(`[Resume Analysis] Fetch attempt ${attempt}/${maxRetries} for ${resumeUrl.substring(0, 100)}...`);
-        
+
         response = await fetch(resumeUrl, {
           method: 'GET',
           headers: {
@@ -166,21 +177,21 @@ export async function POST(request: NextRequest) {
           },
           signal: AbortSignal.timeout(30000), // 30 second timeout
         });
-        
+
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-        
+
         console.log(`[Resume Analysis] Fetch successful on attempt ${attempt}`);
         break; // Success, exit retry loop
-        
+
       } catch (fetchError) {
         console.error(`[Resume Analysis] Fetch attempt ${attempt} failed:`, fetchError instanceof Error ? fetchError.message : fetchError);
-        
+
         if (attempt === maxRetries) {
           console.error("[Resume Analysis] All fetch attempts exhausted");
           return NextResponse.json(
-            { 
+            {
               error: "Failed to download resume from storage after multiple attempts. The file may have been deleted, moved, or the link expired. Please re-upload your resume.",
               details: fetchError instanceof Error ? fetchError.message : "Unknown network error",
               url: resumeUrl.substring(0, 100) + "..."
@@ -188,7 +199,7 @@ export async function POST(request: NextRequest) {
             { status: 404 }
           );
         }
-        
+
         // Exponential backoff: 1s, 2s, 4s
         const delay = Math.min(1000 * Math.pow(2, attempt - 1), 4000);
         console.log(`[Resume Analysis] Waiting ${delay}ms before retry...`);
@@ -205,7 +216,7 @@ export async function POST(request: NextRequest) {
     }
 
     const fileBuffer = await response.arrayBuffer();
-    
+
     if (fileBuffer.byteLength === 0) {
       return NextResponse.json(
         { error: "Downloaded file is empty. Please re-upload your resume." },
@@ -219,12 +230,12 @@ export async function POST(request: NextRequest) {
       resumeText = await extractTextFromPDF(Buffer.from(fileBuffer));
     } catch (extractError) {
       console.error("[Resume Analysis] PDF extraction failed:", extractError);
-      const errorMessage = extractError instanceof Error 
-        ? extractError.message 
+      const errorMessage = extractError instanceof Error
+        ? extractError.message
         : "Failed to extract text from PDF";
       return NextResponse.json({ error: errorMessage }, { status: 400 });
     }
-    
+
     if (!resumeText || resumeText.trim().length < 50) {
       return NextResponse.json(
         { error: "Could not extract sufficient text from resume." },
@@ -238,17 +249,17 @@ export async function POST(request: NextRequest) {
       analysisResult = await extractAndAnalyzeResume(resumeText, targetRole);
     } catch (analysisError) {
       console.error("[Resume Analysis] Analysis failed:", analysisError);
-      const errorMessage = analysisError instanceof Error 
-        ? analysisError.message 
+      const errorMessage = analysisError instanceof Error
+        ? analysisError.message
         : "Failed to analyze resume";
-      
+
       if (errorMessage.includes("Rate limit")) {
         return NextResponse.json(
           { error: errorMessage, retryAfter: 60, quota: getQuotaInfo() },
           { status: 429 }
         );
       }
-      
+
       return NextResponse.json({ error: errorMessage }, { status: 500 });
     }
 
@@ -270,7 +281,7 @@ export async function POST(request: NextRequest) {
       learningSuggestions: analysisResult.learningSuggestions,
       targetRole: targetRole || null,
     };
-    
+
     // Clean all undefined values from the entire analysis object
     const cleanedAnalysisData = cleanUndefinedValues(analysisData);
     const storedAnalysis = await createResumeAnalysis(studentId, cleanedAnalysisData);

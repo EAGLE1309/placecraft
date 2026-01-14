@@ -47,6 +47,7 @@ export default function RecruiterDrivesPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [updatingDriveId, setUpdatingDriveId] = useState<string | null>(null);
 
   useEffect(() => {
     if (recruiterProfile) {
@@ -95,11 +96,14 @@ export default function RecruiterDrivesPage() {
   };
 
   const handleStatusChange = async (driveId: string, newStatus: PlacementDrive["status"]) => {
+    setUpdatingDriveId(driveId);
     try {
       await updateDrive(driveId, { status: newStatus });
       await loadDrives();
     } catch (error) {
       console.error("Failed to update drive status:", error);
+    } finally {
+      setUpdatingDriveId(null);
     }
   };
 
@@ -271,21 +275,30 @@ export default function RecruiterDrivesPage() {
                             </Link>
                           </DropdownMenuItem>
                           {drive.status === "draft" && (
-                            <DropdownMenuItem onClick={() => handleStatusChange(drive.id, "published")}>
-                              <Eye className="size-4 mr-2" />
-                              Publish
+                            <DropdownMenuItem
+                              onClick={() => handleStatusChange(drive.id, "published")}
+                              disabled={updatingDriveId === drive.id}
+                            >
+                              {updatingDriveId === drive.id ? <Spinner className="size-4 mr-2" /> : <Eye className="size-4 mr-2" />}
+                              {updatingDriveId === drive.id ? "Publishing..." : "Publish"}
                             </DropdownMenuItem>
                           )}
                           {drive.status === "published" && (
-                            <DropdownMenuItem onClick={() => handleStatusChange(drive.id, "closed")}>
-                              <Trash2 className="size-4 mr-2" />
-                              Close Drive
+                            <DropdownMenuItem
+                              onClick={() => handleStatusChange(drive.id, "closed")}
+                              disabled={updatingDriveId === drive.id}
+                            >
+                              {updatingDriveId === drive.id ? <Spinner className="size-4 mr-2" /> : <Trash2 className="size-4 mr-2" />}
+                              {updatingDriveId === drive.id ? "Closing..." : "Close Drive"}
                             </DropdownMenuItem>
                           )}
                           {drive.status === "closed" && (
-                            <DropdownMenuItem onClick={() => handleStatusChange(drive.id, "completed")}>
-                              <Briefcase className="size-4 mr-2" />
-                              Mark Completed
+                            <DropdownMenuItem
+                              onClick={() => handleStatusChange(drive.id, "completed")}
+                              disabled={updatingDriveId === drive.id}
+                            >
+                              {updatingDriveId === drive.id ? <Spinner className="size-4 mr-2" /> : <Briefcase className="size-4 mr-2" />}
+                              {updatingDriveId === drive.id ? "Completing..." : "Mark Completed"}
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>

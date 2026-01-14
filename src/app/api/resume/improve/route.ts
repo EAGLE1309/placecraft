@@ -10,6 +10,7 @@ import { improveResume, getQuotaInfo, cleanUndefinedValues } from "@/lib/ai/resu
 import { uploadToR2 } from "@/lib/r2/upload";
 import { generatePDFFromHTML } from "@/lib/pdf/generate-pdf";
 import { ExtractedResumeData, ImprovedResumeData } from "@/types/resume";
+import { verifyAuth, requireAuth } from "@/lib/firebase/auth-api";
 
 /**
  * Resume Improvement API - New Architecture
@@ -26,6 +27,11 @@ import { ExtractedResumeData, ImprovedResumeData } from "@/types/resume";
 
 export async function POST(request: NextRequest) {
   try {
+    // Verify authentication
+    const authResult = await verifyAuth(request);
+    const authError = requireAuth(authResult);
+    if (authError) return authError;
+
     const body = await request.json();
     const { studentId, analysisId, targetRole, focusAreas } = body;
 
