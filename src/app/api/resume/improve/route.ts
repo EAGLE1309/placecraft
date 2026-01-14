@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { 
-  getLatestResumeAnalysis, 
+import {
+  getLatestResumeAnalysis,
   getResumeAnalysisById,
   createImprovedResume,
   createResumeHistory,
@@ -8,6 +8,7 @@ import {
 } from "@/lib/firebase/firestore";
 import { improveResume, getQuotaInfo, cleanUndefinedValues } from "@/lib/ai/resume-ai";
 import { uploadToR2 } from "@/lib/r2/upload";
+import { generatePDFFromHTML } from "@/lib/pdf/generate-pdf";
 import { ExtractedResumeData, ImprovedResumeData } from "@/types/resume";
 
 /**
@@ -54,10 +55,10 @@ export async function POST(request: NextRequest) {
     const quota = getQuotaInfo();
     if (quota.minuteRemaining <= 0) {
       return NextResponse.json(
-        { 
+        {
           error: "Rate limit reached. Please wait before improving.",
           retryAfter: quota.resetInSeconds,
-          quota 
+          quota
         },
         { status: 429 }
       );
@@ -75,17 +76,17 @@ export async function POST(request: NextRequest) {
       );
     } catch (improveError) {
       console.error("[Resume Improve] Improvement failed:", improveError);
-      const errorMessage = improveError instanceof Error 
-        ? improveError.message 
+      const errorMessage = improveError instanceof Error
+        ? improveError.message
         : "Failed to improve resume";
-      
+
       if (errorMessage.includes("Rate limit")) {
         return NextResponse.json(
           { error: errorMessage, retryAfter: 60, quota: getQuotaInfo() },
           { status: 429 }
         );
       }
-      
+
       return NextResponse.json({ error: errorMessage }, { status: 500 });
     }
 
@@ -111,7 +112,7 @@ export async function POST(request: NextRequest) {
     // Step 4: Upload PDF to storage
     const student = await getStudentById(studentId);
     const fileName = `resumes/${studentId}/${Date.now()}_improved_${improvedData.personalInfo.name?.replace(/\s+/g, "_") || "resume"}.pdf`;
-    
+
     let uploadResult;
     try {
       uploadResult = await uploadToR2(pdfBuffer, fileName, "application/pdf");
@@ -283,15 +284,15 @@ function generateResumeHTML(data: ImprovedResumeData): string {
   </div>
 
   ${personalInfo.summary
-    ? `<div class="section">
+      ? `<div class="section">
         <div class="section-title">Professional Summary</div>
         <p>${personalInfo.summary}</p>
       </div>`
-    : ""
-  }
+      : ""
+    }
 
   ${education.length > 0
-    ? `<div class="section">
+      ? `<div class="section">
         <div class="section-title">Education</div>
         ${education.map(edu => `
           <div class="entry">
@@ -308,11 +309,11 @@ function generateResumeHTML(data: ImprovedResumeData): string {
           </div>
         `).join("")}
       </div>`
-    : ""
-  }
+      : ""
+    }
 
   ${experience.length > 0
-    ? `<div class="section">
+      ? `<div class="section">
         <div class="section-title">Experience</div>
         ${experience.map(exp => `
           <div class="entry">
@@ -324,18 +325,18 @@ function generateResumeHTML(data: ImprovedResumeData): string {
               <div class="entry-date">${exp.startDate || ""} - ${exp.current ? "Present" : exp.endDate || ""}</div>
             </div>
             ${exp.description ? `<div class="entry-description">${exp.description}</div>` : ""}
-            ${exp.highlights && exp.highlights.length > 0 
-              ? `<ul class="highlights">${exp.highlights.map(h => `<li>${h}</li>`).join("")}</ul>` 
-              : ""
-            }
+            ${exp.highlights && exp.highlights.length > 0
+          ? `<ul class="highlights">${exp.highlights.map(h => `<li>${h}</li>`).join("")}</ul>`
+          : ""
+        }
           </div>
         `).join("")}
       </div>`
-    : ""
-  }
+      : ""
+    }
 
   ${projects.length > 0
-    ? `<div class="section">
+      ? `<div class="section">
         <div class="section-title">Projects</div>
         ${projects.map(proj => `
           <div class="entry">
@@ -345,27 +346,27 @@ function generateResumeHTML(data: ImprovedResumeData): string {
             </div>
             ${proj.description ? `<div class="entry-description">${proj.description}</div>` : ""}
             ${proj.technologies && proj.technologies.length > 0
-              ? `<div class="entry-subtitle" style="margin-top: 5px;">Technologies: ${proj.technologies.join(", ")}</div>`
-              : ""
-            }
+          ? `<div class="entry-subtitle" style="margin-top: 5px;">Technologies: ${proj.technologies.join(", ")}</div>`
+          : ""
+        }
           </div>
         `).join("")}
       </div>`
-    : ""
-  }
+      : ""
+    }
 
   ${skills.length > 0
-    ? `<div class="section">
+      ? `<div class="section">
         <div class="section-title">Skills</div>
         <div class="skills-container">
           ${skills.map(skill => `<span class="skill">${skill}</span>`).join("")}
         </div>
       </div>`
-    : ""
-  }
+      : ""
+    }
 
   ${certifications.length > 0
-    ? `<div class="section">
+      ? `<div class="section">
         <div class="section-title">Certifications</div>
         ${certifications.map(cert => `
           <div class="entry">
@@ -379,46 +380,20 @@ function generateResumeHTML(data: ImprovedResumeData): string {
           </div>
         `).join("")}
       </div>`
-    : ""
-  }
+      : ""
+    }
 
   ${achievements.length > 0
-    ? `<div class="section">
+      ? `<div class="section">
         <div class="section-title">Achievements</div>
         <ul>
           ${achievements.map(a => `<li><strong>${a.title}</strong>${a.description ? `: ${a.description}` : ""}</li>`).join("")}
         </ul>
       </div>`
-    : ""
-  }
+      : ""
+    }
 </body>
 </html>
   `;
 }
 
-async function generatePDFFromHTML(html: string): Promise<Buffer> {
-  try {
-    const puppeteer = await import("puppeteer");
-    const browser = await puppeteer.default.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
-    const pdf = await page.pdf({
-      format: "A4",
-      printBackground: true,
-      margin: {
-        top: "20mm",
-        right: "15mm",
-        bottom: "20mm",
-        left: "15mm",
-      },
-    });
-    await browser.close();
-    return Buffer.from(pdf);
-  } catch (error) {
-    console.error("Puppeteer not available, using fallback method:", error);
-    return Buffer.from(html);
-  }
-}

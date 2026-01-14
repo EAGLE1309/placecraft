@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PersonalInfo, Education, Experience, Project, Certification } from "@/types";
+import { generatePDFFromHTML } from "@/lib/pdf/generate-pdf";
 
 export async function POST(request: NextRequest) {
   try {
@@ -297,29 +298,3 @@ function generateResumeHTML(data: {
   `;
 }
 
-async function generatePDFFromHTML(html: string): Promise<Buffer> {
-  try {
-    const puppeteer = await import("puppeteer");
-    const browser = await puppeteer.default.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
-    const pdf = await page.pdf({
-      format: "A4",
-      printBackground: true,
-      margin: {
-        top: "20mm",
-        right: "15mm",
-        bottom: "20mm",
-        left: "15mm",
-      },
-    });
-    await browser.close();
-    return Buffer.from(pdf);
-  } catch (error) {
-    console.error("Puppeteer not available, using fallback method:", error);
-    return Buffer.from(html);
-  }
-}
