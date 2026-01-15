@@ -102,36 +102,46 @@ export async function generateLearningContent(prompt: string): Promise<string> {
 export async function generateLearningJSON<T>(prompt: string): Promise<T> {
   const text = await generateLearningContent(prompt);
   
-  console.log("[Learning Gemini] Raw AI response:", text);
+  console.log("[Learning Gemini] Raw AI response (first 500 chars):", text.substring(0, 500));
   
-  // Extract JSON from the response (handle markdown code blocks)
-  let jsonStr = text.trim();
-  
-  // Remove markdown code blocks if present
-  const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (jsonMatch) {
-    jsonStr = jsonMatch[1].trim();
-    console.log("[Learning Gemini] Extracted from markdown code blocks:", jsonStr);
-  }
-  
-  // Try to find JSON object if wrapped in extra text
-  if (!jsonStr.startsWith('{')) {
-    const jsonObjectMatch = jsonStr.match(/\{[\s\S]*\}/);
-    if (jsonObjectMatch) {
-      jsonStr = jsonObjectMatch[0];
-      console.log("[Learning Gemini] Extracted JSON object from text:", jsonStr);
-    }
-  }
+  const trimmedText = text.trim();
   
   try {
-    const parsed = JSON.parse(jsonStr) as T;
-    console.log("[Learning Gemini] Successfully parsed JSON:", parsed);
+    const parsed = JSON.parse(trimmedText) as T;
+    console.log("[Learning Gemini] Direct JSON parse successful");
     return parsed;
-  } catch (error) {
-    console.error("[Learning Gemini] JSON parse error:", error);
-    console.error("[Learning Gemini] Raw response (first 500 chars):", text.substring(0, 500));
-    console.error("[Learning Gemini] Extracted JSON string (first 500 chars):", jsonStr.substring(0, 500));
-    throw new Error("Failed to parse AI response as JSON. The AI may have returned invalid JSON format.");
+  } catch (directParseError) {
+    console.log("[Learning Gemini] Direct parse failed, attempting extraction fallback");
+    
+    try {
+      let extracted = trimmedText;
+      
+      if (trimmedText.includes('```')) {
+        const codeBlockMatch = trimmedText.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (codeBlockMatch) {
+          extracted = codeBlockMatch[1].trim();
+          console.log("[Learning Gemini] Extracted from markdown code block");
+        }
+      }
+      
+      if (!extracted.startsWith('{') && !extracted.startsWith('[')) {
+        const jsonMatch = extracted.match(/^[^{[]*(\{[\s\S]*\}|\[[\s\S]*\])[^}\]]*$/);
+        if (jsonMatch) {
+          extracted = jsonMatch[1];
+          console.log("[Learning Gemini] Extracted JSON from surrounding text");
+        }
+      }
+      
+      const parsed = JSON.parse(extracted) as T;
+      console.log("[Learning Gemini] Fallback extraction successful");
+      return parsed;
+    } catch (extractionError) {
+      console.error("[Learning Gemini] All parsing attempts failed");
+      console.error("[Learning Gemini] Direct parse error:", directParseError);
+      console.error("[Learning Gemini] Extraction error:", extractionError);
+      console.error("[Learning Gemini] Raw response (first 1000 chars):", text.substring(0, 1000));
+      throw new Error("Failed to parse AI response as JSON. The AI may have returned invalid JSON format.");
+    }
   }
 }
 
