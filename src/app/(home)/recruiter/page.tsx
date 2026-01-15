@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
+import { StatsCard, ApplicationStatusBadge, UserAvatar } from "@/components/shared";
 import {
   getRecruiterStats,
   getDrivesByRecruiter,
@@ -83,17 +84,6 @@ export default function RecruiterDashboardPage() {
     );
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "applied": return "bg-blue-100 text-blue-800";
-      case "shortlisted": return "bg-yellow-100 text-yellow-800";
-      case "interview": return "bg-purple-100 text-purple-800";
-      case "selected": return "bg-green-100 text-green-800";
-      case "rejected": return "bg-red-100 text-red-800";
-      default: return "bg-gray-100 text-gray-800";
-    }
-  };
-
   return (
     <ContentLayout title="Recruiter Dashboard">
       <div className="space-y-6">
@@ -113,49 +103,32 @@ export default function RecruiterDashboardPage() {
 
         {/* Stats */}
         <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Drives</CardTitle>
-              <Briefcase className="size-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.activeDrives || 0}</div>
-              <p className="text-xs text-muted-foreground">Currently open</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Applications</CardTitle>
-              <Users className="size-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalApplications || 0}</div>
-              <p className="text-xs text-muted-foreground">Received</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Shortlisted</CardTitle>
-              <Clock className="size-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">{stats?.shortlistedCount || 0}</div>
-              <p className="text-xs text-muted-foreground">For interview</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Selected</CardTitle>
-              <CheckCircle className="size-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{stats?.selectedCount || 0}</div>
-              <p className="text-xs text-muted-foreground">Hired</p>
-            </CardContent>
-          </Card>
+          <StatsCard
+            title="Active Drives"
+            value={stats?.activeDrives || 0}
+            subtitle="Currently open"
+            icon={Briefcase}
+          />
+          <StatsCard
+            title="Total Applications"
+            value={stats?.totalApplications || 0}
+            subtitle="Received"
+            icon={Users}
+          />
+          <StatsCard
+            title="Shortlisted"
+            value={stats?.shortlistedCount || 0}
+            subtitle="For interview"
+            icon={Clock}
+            valueClassName="text-yellow-600"
+          />
+          <StatsCard
+            title="Selected"
+            value={stats?.selectedCount || 0}
+            subtitle="Hired"
+            icon={CheckCircle}
+            valueClassName="text-green-600"
+          />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
@@ -236,11 +209,7 @@ export default function RecruiterDashboardPage() {
                   {recentApplications.slice(0, 5).map((app) => (
                     <div key={String(app.id)} className="flex items-center justify-between p-3 rounded-lg border">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                          <span className="font-medium text-sm">
-                            {typeof app.student?.name === 'string' ? app.student.name.charAt(0) : "?"}
-                          </span>
-                        </div>
+                        <UserAvatar name={app.student?.name || "Unknown"} />
                         <div>
                           <h4 className="font-medium">{typeof app.student?.name === 'string' ? app.student.name : "Unknown"}</h4>
                           <p className="text-sm text-muted-foreground">
@@ -248,9 +217,7 @@ export default function RecruiterDashboardPage() {
                           </p>
                         </div>
                       </div>
-                      <Badge className={getStatusColor(app.status)}>
-                        {app.status}
-                      </Badge>
+                      <ApplicationStatusBadge status={app.status} />
                     </div>
                   ))}
                 </div>

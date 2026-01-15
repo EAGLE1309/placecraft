@@ -2,30 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { DataTable, Column, SearchBar, DriveStatusBadge, DriveTypeBadge } from "@/components/shared";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Spinner } from "@/components/ui/spinner";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { getAllDrives, createDrive, updateDrive, getApplicationsByDrive } from "@/lib/firebase/firestore";
-import { PlacementDrive, BRANCHES, Application } from "@/types";
+import { getAllDrives, createDrive, updateDrive } from "@/lib/firebase/firestore";
+import { PlacementDrive, BRANCHES } from "@/types";
 import { GRADUATION_YEARS } from "@/lib/constants";
 import { Timestamp } from "firebase/firestore";
-import {
-  Plus,
-  Building2,
-  Calendar,
-  Users,
-  Edit,
-  Eye,
-  Search,
-  Filter
-} from "lucide-react";
+import { Plus, Building2, Eye } from "lucide-react";
 import { toDate } from "@/lib/utils";
 
 export default function AdminDrivesPage() {
@@ -184,16 +175,6 @@ export default function AdminDrivesPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "draft": return "bg-gray-100 text-gray-800";
-      case "published": return "bg-green-100 text-green-800";
-      case "closed": return "bg-yellow-100 text-yellow-800";
-      case "completed": return "bg-blue-100 text-blue-800";
-      default: return "bg-gray-100 text-gray-800";
-    }
-  };
-
   if (loading) {
     return (
       <ContentLayout title="Manage Drives">
@@ -210,15 +191,11 @@ export default function AdminDrivesPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between gap-4">
           <div className="flex gap-2 flex-1">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-              <Input
-                placeholder="Search drives..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+            <SearchBar
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search drives..."
+            />
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[140px]">
                 <SelectValue placeholder="Status" />
@@ -239,96 +216,91 @@ export default function AdminDrivesPage() {
         </div>
 
         {/* Drives Table */}
-        <Card>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="border-b bg-muted/50">
-                  <tr>
-                    <th className="text-left p-4 font-medium">Company / Role</th>
-                    <th className="text-left p-4 font-medium">Type</th>
-                    <th className="text-left p-4 font-medium">Deadline</th>
-                    <th className="text-left p-4 font-medium">Applications</th>
-                    <th className="text-left p-4 font-medium">Status</th>
-                    <th className="text-left p-4 font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredDrives.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="text-center py-8 text-muted-foreground">
-                        No drives found
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredDrives.map((drive) => (
-                      <tr key={drive.id} className="border-b hover:bg-muted/50">
-                        <td className="p-4">
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-                              <Building2 className="size-5 text-blue-600" />
-                            </div>
-                            <div>
-                              <p className="font-medium">{drive.role}</p>
-                              <p className="text-sm text-muted-foreground">{drive.company}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <Badge variant={drive.type === "fulltime" ? "default" : "secondary"}>
-                            {drive.type === "fulltime" ? "Full-time" : "Internship"}
-                          </Badge>
-                        </td>
-                        <td className="p-4 text-sm">
-                          {toDate(drive.applicationDeadline).toLocaleDateString()}
-                        </td>
-                        <td className="p-4">
-                          <span className="font-medium">{typeof drive.applicationCount === 'number' ? drive.applicationCount : 0}</span>
-                        </td>
-                        <td className="p-4">
-                          <Badge className={getStatusColor(drive.status)}>
-                            {drive.status}
-                          </Badge>
-                        </td>
-                        <td className="p-4">
-                          <div className="flex gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setSelectedDrive(drive)}
-                            >
-                              <Eye className="size-4" />
-                            </Button>
-                            {drive.status === "draft" && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleStatusChange(drive.id, "published")}
-                                disabled={updatingDriveId === drive.id}
-                              >
-                                {updatingDriveId === drive.id ? <Spinner className="size-4" /> : "Publish"}
-                              </Button>
-                            )}
-                            {drive.status === "published" && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleStatusChange(drive.id, "closed")}
-                                disabled={updatingDriveId === drive.id}
-                              >
-                                {updatingDriveId === drive.id ? <Spinner className="size-4" /> : "Close"}
-                              </Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+        <DataTable
+          data={filteredDrives}
+          keyExtractor={(drive) => drive.id}
+          emptyMessage="No drives found"
+          columns={[
+            {
+              key: "company",
+              header: "Company / Role",
+              render: (drive) => (
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                    <Building2 className="size-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium">{drive.role}</p>
+                    <p className="text-sm text-muted-foreground">{drive.company}</p>
+                  </div>
+                </div>
+              ),
+            },
+            {
+              key: "type",
+              header: "Type",
+              render: (drive) => <DriveTypeBadge type={drive.type} />,
+            },
+            {
+              key: "deadline",
+              header: "Deadline",
+              render: (drive) => (
+                <span className="text-sm">
+                  {toDate(drive.applicationDeadline).toLocaleDateString()}
+                </span>
+              ),
+            },
+            {
+              key: "applications",
+              header: "Applications",
+              render: (drive) => (
+                <span className="font-medium">
+                  {typeof drive.applicationCount === "number" ? drive.applicationCount : 0}
+                </span>
+              ),
+            },
+            {
+              key: "status",
+              header: "Status",
+              render: (drive) => <DriveStatusBadge status={drive.status} />,
+            },
+            {
+              key: "actions",
+              header: "Actions",
+              render: (drive) => (
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedDrive(drive)}
+                  >
+                    <Eye className="size-4" />
+                  </Button>
+                  {drive.status === "draft" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleStatusChange(drive.id, "published")}
+                      disabled={updatingDriveId === drive.id}
+                    >
+                      {updatingDriveId === drive.id ? <Spinner className="size-4" /> : "Publish"}
+                    </Button>
                   )}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+                  {drive.status === "published" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleStatusChange(drive.id, "closed")}
+                      disabled={updatingDriveId === drive.id}
+                    >
+                      {updatingDriveId === drive.id ? <Spinner className="size-4" /> : "Close"}
+                    </Button>
+                  )}
+                </div>
+              ),
+            },
+          ] as Column<PlacementDrive>[]}
+        />
       </div>
 
       {/* Create Drive Dialog */}
@@ -530,12 +502,8 @@ export default function AdminDrivesPage() {
 
               <div className="space-y-4">
                 <div className="flex gap-2">
-                  <Badge variant={selectedDrive.type === "fulltime" ? "default" : "secondary"}>
-                    {selectedDrive.type === "fulltime" ? "Full-time" : "Internship"}
-                  </Badge>
-                  <Badge className={getStatusColor(selectedDrive.status)}>
-                    {selectedDrive.status}
-                  </Badge>
+                  <DriveTypeBadge type={selectedDrive.type} />
+                  <DriveStatusBadge status={selectedDrive.status} />
                 </div>
 
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">

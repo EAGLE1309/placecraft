@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
+import { StatsCard, ApplicationStatusBadge, DriveTypeBadge } from "@/components/shared";
 import {
   getStudentStats,
   getEligibleDrivesForStudent,
@@ -75,17 +76,6 @@ export default function StudentDashboardPage() {
     );
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "applied": return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
-      case "shortlisted": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300";
-      case "interview": return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300";
-      case "selected": return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
-      case "rejected": return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300";
-      default: return "bg-gray-100 text-gray-800";
-    }
-  };
-
   return (
     <ContentLayout title="Dashboard">
       <div className="space-y-6">
@@ -123,44 +113,25 @@ export default function StudentDashboardPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Resume Score</CardTitle>
-              <FileText className="size-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {studentProfile.resumeScore ? `${studentProfile.resumeScore}/100` : "N/A"}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {studentProfile.resumeScore ? "ATS optimized" : "Upload resume to get score"}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Applications</CardTitle>
-              <Briefcase className="size-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.appliedCount || 0}</div>
-              <p className="text-xs text-muted-foreground">
-                {stats?.shortlistedCount || 0} shortlisted
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Offers</CardTitle>
-              <CheckCircle2 className="size-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{stats?.selectedCount || 0}</div>
-              <p className="text-xs text-muted-foreground">Congratulations!</p>
-            </CardContent>
-          </Card>
+          <StatsCard
+            title="Resume Score"
+            value={studentProfile.resumeScore ? `${studentProfile.resumeScore}/100` : "N/A"}
+            subtitle={studentProfile.resumeScore ? "ATS optimized" : "Upload resume to get score"}
+            icon={FileText}
+          />
+          <StatsCard
+            title="Applications"
+            value={stats?.appliedCount || 0}
+            subtitle={`${stats?.shortlistedCount || 0} shortlisted`}
+            icon={Briefcase}
+          />
+          <StatsCard
+            title="Offers"
+            value={stats?.selectedCount || 0}
+            subtitle="Congratulations!"
+            icon={CheckCircle2}
+            valueClassName="text-green-600"
+          />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
@@ -203,9 +174,7 @@ export default function StudentDashboardPage() {
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="text-right">
-                          <Badge variant={drive.type === "fulltime" ? "default" : "secondary"}>
-                            {drive.type === "fulltime" ? "Full-time" : "Internship"}
-                          </Badge>
+                          <DriveTypeBadge type={drive.type} />
                           <p className="text-xs text-muted-foreground mt-1 flex items-center justify-end">
                             <Calendar className="size-3 mr-1" />
                             {toDate(drive.applicationDeadline).toLocaleDateString()}
@@ -263,9 +232,7 @@ export default function StudentDashboardPage() {
                           Applied {toDate(app.createdAt).toLocaleDateString()}
                         </p>
                       </div>
-                      <Badge className={getStatusColor(app.status)}>
-                        {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
-                      </Badge>
+                      <ApplicationStatusBadge status={app.status} />
                     </div>
                   ))}
                 </div>

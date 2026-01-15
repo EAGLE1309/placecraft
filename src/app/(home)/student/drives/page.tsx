@@ -7,8 +7,8 @@ import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { SearchBar, EmptyState } from "@/components/shared";
 import {
   getEligibleDrivesForStudent,
   hasAppliedToDrive,
@@ -21,8 +21,6 @@ import {
   MapPin,
   Calendar,
   IndianRupee,
-  Search,
-  Filter,
   Clock,
   CheckCircle,
   Briefcase
@@ -151,15 +149,12 @@ export default function StudentDrivesPage() {
       <div className="space-y-6">
         {/* Search and filters */}
         <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by company, role, or skills..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+          <SearchBar
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search by company, role, or skills..."
+            className="flex-1"
+          />
           <div className="flex gap-2">
             <Button
               variant={typeFilter === "all" ? "default" : "outline"}
@@ -187,17 +182,13 @@ export default function StudentDrivesPage() {
 
         {/* Drives grid */}
         {filteredDrives.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <Briefcase className="size-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <h3 className="text-lg font-medium">No opportunities found</h3>
-              <p className="text-muted-foreground">
-                {searchQuery || typeFilter !== "all"
-                  ? "Try adjusting your filters"
-                  : "Check back later for new opportunities"}
-              </p>
-            </CardContent>
-          </Card>
+          <EmptyState
+            icon={Briefcase}
+            title="No opportunities found"
+            description={searchQuery || typeFilter !== "all"
+              ? "Try adjusting your filters"
+              : "Check back later for new opportunities"}
+          />
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredDrives.map((drive) => {

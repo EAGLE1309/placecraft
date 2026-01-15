@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
+import { DataTable, Column, ApplicationStatusBadge, UserAvatar, ScoreIndicator } from "@/components/shared";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   getDrivesByRecruiter,
@@ -17,7 +17,6 @@ import {
 } from "@/lib/firebase/firestore";
 import { RecruiterProfile, PlacementDrive, Application, StudentProfile, ApplicationStatus } from "@/types";
 import {
-  FileText,
   Mail,
   Phone,
   GraduationCap,
@@ -93,17 +92,6 @@ export default function RecruiterApplicationsPage() {
     return matchesDrive && matchesStatus;
   });
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "applied": return "bg-blue-100 text-blue-800";
-      case "shortlisted": return "bg-yellow-100 text-yellow-800";
-      case "interview": return "bg-purple-100 text-purple-800";
-      case "selected": return "bg-green-100 text-green-800";
-      case "rejected": return "bg-red-100 text-red-800";
-      default: return "bg-gray-100 text-gray-800";
-    }
-  };
-
   if (loading || !recruiterProfile) {
     return (
       <ContentLayout title="Applications">
@@ -149,91 +137,60 @@ export default function RecruiterApplicationsPage() {
         </div>
 
         {/* Applications Table */}
-        <Card>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="border-b bg-muted/50">
-                  <tr>
-                    <th className="text-left p-4 font-medium">Candidate</th>
-                    <th className="text-left p-4 font-medium">Role</th>
-                    <th className="text-left p-4 font-medium">Resume Score</th>
-                    <th className="text-left p-4 font-medium">Skill Match</th>
-                    <th className="text-left p-4 font-medium">Status</th>
-                    <th className="text-left p-4 font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredApplications.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="text-center py-8 text-muted-foreground">
-                        No applications found
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredApplications.map((app) => (
-                      <tr key={String(app.id)} className="border-b hover:bg-muted/50">
-                        <td className="p-4">
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                              <span className="font-medium text-sm">
-                                {typeof app.student?.name === 'string' ? app.student.name.charAt(0) : "?"}
-                              </span>
-                            </div>
-                            <div>
-                              <p className="font-medium">{typeof app.student?.name === 'string' ? app.student.name : "Unknown"}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {app.student?.branch} • {app.student?.graduationYear}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-4 text-sm">{app.drive?.role || "N/A"}</td>
-                        <td className="p-4">
-                          <div className="flex items-center gap-2">
-                            <div className="w-16 bg-gray-200 rounded-full h-2">
-                              <div
-                                className="bg-blue-600 h-2 rounded-full"
-                                style={{ width: `${app.resumeScore}%` }}
-                              />
-                            </div>
-                            <span className="text-sm">{app.resumeScore}</span>
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <div className="flex items-center gap-2">
-                            <div className="w-16 bg-gray-200 rounded-full h-2">
-                              <div
-                                className="bg-green-600 h-2 rounded-full"
-                                style={{ width: `${app.skillMatch}%` }}
-                              />
-                            </div>
-                            <span className="text-sm">{app.skillMatch}%</span>
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <Badge className={getStatusColor(app.status)}>
-                            {app.status}
-                          </Badge>
-                        </td>
-                        <td className="p-4">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setSelectedApp(app)}
-                          >
-                            <Eye className="size-4 mr-1" />
-                            View
-                          </Button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+        <DataTable
+          data={filteredApplications}
+          keyExtractor={(app) => String(app.id)}
+          emptyMessage="No applications found"
+          columns={[
+            {
+              key: "candidate",
+              header: "Candidate",
+              render: (app) => (
+                <div className="flex items-center gap-3">
+                  <UserAvatar name={app.student?.name || "Unknown"} />
+                  <div>
+                    <p className="font-medium">
+                      {typeof app.student?.name === "string" ? app.student.name : "Unknown"}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {app.student?.branch} • {app.student?.graduationYear}
+                    </p>
+                  </div>
+                </div>
+              ),
+            },
+            {
+              key: "role",
+              header: "Role",
+              render: (app) => <span className="text-sm">{app.drive?.role || "N/A"}</span>,
+            },
+            {
+              key: "resumeScore",
+              header: "Resume Score",
+              render: (app) => <ScoreIndicator score={app.resumeScore} />,
+            },
+            {
+              key: "skillMatch",
+              header: "Skill Match",
+              render: (app) => <ScoreIndicator score={app.skillMatch} label="%" />,
+            },
+            {
+              key: "status",
+              header: "Status",
+              render: (app) => <ApplicationStatusBadge status={app.status} />,
+            },
+            {
+              key: "actions",
+              header: "Actions",
+              render: (app) => (
+                <Button variant="ghost" size="sm" onClick={() => setSelectedApp(app)}>
+                  <Eye className="size-4 mr-1" />
+                  View
+                </Button>
+              ),
+            },
+          ] as Column<ApplicationWithDetails>[]}
+        />
       </div>
 
       {/* Application Detail Dialog */}
@@ -296,9 +253,7 @@ export default function RecruiterApplicationsPage() {
                 {/* Current Status */}
                 <div className="p-4 border rounded-lg">
                   <p className="text-sm text-muted-foreground mb-2">Current Status</p>
-                  <Badge className={getStatusColor(selectedApp.status)}>
-                    {selectedApp.status}
-                  </Badge>
+                  <ApplicationStatusBadge status={selectedApp.status} />
                 </div>
 
                 {/* Action Buttons */}

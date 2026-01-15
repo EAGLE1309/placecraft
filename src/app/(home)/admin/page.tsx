@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
+import { StatsCard, ResumeBadge, UserAvatar } from "@/components/shared";
 import { getAdminStats, getAllDrives, getAllStudents, getAllRecruiters } from "@/lib/firebase/firestore";
 import { AdminDashboardStats, PlacementDrive, StudentProfile, RecruiterProfile } from "@/types";
 import {
@@ -66,49 +67,31 @@ export default function AdminDashboardPage() {
       <div className="space-y-6">
         {/* Stats cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Students</CardTitle>
-              <GraduationCap className="size-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalStudents || 0}</div>
-              <p className="text-xs text-muted-foreground">Registered on platform</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Drives</CardTitle>
-              <Briefcase className="size-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.activeDrives || 0}</div>
-              <p className="text-xs text-muted-foreground">Currently accepting applications</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Applications</CardTitle>
-              <TrendingUp className="size-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalApplications || 0}</div>
-              <p className="text-xs text-muted-foreground">Across all drives</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Students Placed</CardTitle>
-              <CheckCircle className="size-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{stats?.placedStudents || 0}</div>
-              <p className="text-xs text-muted-foreground">Successfully placed</p>
-            </CardContent>
-          </Card>
+          <StatsCard
+            title="Total Students"
+            value={stats?.totalStudents || 0}
+            subtitle="Registered on platform"
+            icon={GraduationCap}
+          />
+          <StatsCard
+            title="Active Drives"
+            value={stats?.activeDrives || 0}
+            subtitle="Currently accepting applications"
+            icon={Briefcase}
+          />
+          <StatsCard
+            title="Total Applications"
+            value={stats?.totalApplications || 0}
+            subtitle="Across all drives"
+            icon={TrendingUp}
+          />
+          <StatsCard
+            title="Students Placed"
+            value={stats?.placedStudents || 0}
+            subtitle="Successfully placed"
+            icon={CheckCircle}
+            valueClassName="text-green-600"
+          />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
@@ -187,22 +170,14 @@ export default function AdminDashboardPage() {
                   {recentStudents.map((student) => (
                     <div key={student.id} className="flex items-center justify-between p-3 rounded-lg border">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                          <span className="font-medium text-sm">
-                            {student.name.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
+                        <UserAvatar name={student.name} />
                         <div>
                           <h4 className="font-medium">{student.name}</h4>
                           <p className="text-sm text-muted-foreground">{student.branch}</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        {student.resumeFileId ? (
-                          <Badge className="bg-green-100 text-green-800">Resume ✓</Badge>
-                        ) : (
-                          <Badge variant="outline">No Resume</Badge>
-                        )}
+                        <ResumeBadge hasResume={!!student.resumeFileId} />
                         <p className="text-xs text-muted-foreground mt-1">
                           CGPA: {student.cgpa || "N/A"}
                         </p>
