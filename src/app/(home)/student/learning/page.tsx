@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import { getLearningSuggestions, markSuggestionComplete } from "@/lib/firebase/firestore";
 import { StudentProfile, LearningSuggestion } from "@/types";
+import { LearningSubjectProgress } from "@/types/learning";
 import {
   BookOpen,
   CheckCircle2,
@@ -20,27 +22,42 @@ import {
   GraduationCap,
   Code,
   Wrench,
-  Play
+  Play,
+  ChevronRight,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 
 export default function StudentLearningPage() {
+  const router = useRouter();
   const { profile } = useAuth();
   const studentProfile = profile as StudentProfile | null;
 
   const [suggestions, setSuggestions] = useState<LearningSuggestion[]>([]);
+  const [learningProgress, setLearningProgress] = useState<LearningSubjectProgress[]>([]);
   const [loading, setLoading] = useState(true);
   const [completing, setCompleting] = useState<string | null>(null);
+  const [startingLearning, setStartingLearning] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchData() {
       if (!studentProfile) return;
 
       try {
+        // Fetch learning suggestions
         const data = await getLearningSuggestions(studentProfile.id);
         setSuggestions(data);
+
+        // Fetch learning progress
+        const progressResponse = await fetch(
+          `/api/learning-system/progress?studentId=${studentProfile.id}`
+        );
+        const progressData = await progressResponse.json();
+        if (progressData.success && progressData.progressList) {
+          setLearningProgress(progressData.progressList);
+        }
       } catch (error) {
-        console.error("Failed to fetch learning suggestions:", error);
+        console.error("Failed to fetch learning data:", error);
       } finally {
         setLoading(false);
       }
@@ -48,6 +65,40 @@ export default function StudentLearningPage() {
 
     fetchData();
   }, [studentProfile]);
+
+  // Handle starting learning for a skill
+  const handleStartLearning = useCallback(async (skill: string, learningType: string) => {
+    if (startingLearning) return; // Prevent double-click
+
+    setStartingLearning(skill);
+    try {
+      // Create/get subject with roadmap
+      const response = await fetch("/api/learning-system/subjects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ skillName: skill, learningType }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || "Failed to create subject");
+      }
+
+      // Navigate to subject page
+      router.push(`/student/learning/${data.subject.id}`);
+    } catch (error) {
+      console.error("Failed to start learning:", error);
+      setStartingLearning(null);
+    }
+  }, [router, startingLearning]);
+
+  // Check if a skill has learning progress
+  const getSkillProgress = (skillName: string): LearningSubjectProgress | undefined => {
+    return learningProgress.find(
+      (p) => p.subjectName.toLowerCase() === skillName.toLowerCase()
+    );
+  };
 
   const handleMarkComplete = async (id: string) => {
     setCompleting(id);
@@ -248,9 +299,55 @@ export default function StudentLearningPage() {
                       <span>Estimated: {suggestion.estimatedTime}</span>
                     </div>
 
-                    {/* Learning Resources */}
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium">Get Started:</p>
+                    {/* Progress indicator if learning has started */}
+                    {(() => {
+                      const progress = getSkillProgress(suggestion.skill);
+                      if (progress && progress.progressPercentage > 0) {
+                        return (
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">Progress</span>
+                              <span className="font-medium text-blue-600">{progress.progressPercentage}%</span>
+                            </div>
+                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                              <div
+                                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                                style={{ width: `${progress.progressPercentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+
+                    {/* Start Learning Button */}
+                    <Button
+                      onClick={() => handleStartLearning(suggestion.skill, suggestion.learningType)}
+                      disabled={startingLearning === suggestion.skill}
+                      className="w-full"
+                    >
+                      {startingLearning === suggestion.skill ? (
+                        <>
+                          <Spinner className="size-4 mr-2" />
+                          Starting...
+                        </>
+                      ) : getSkillProgress(suggestion.skill) ? (
+                        <>
+                          <ChevronRight className="size-4 mr-2" />
+                          Continue Learning
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="size-4 mr-2" />
+                          Start Learning
+                        </>
+                      )}
+                    </Button>
+
+                    {/* External Resources (collapsed) */}
+                    <div className="space-y-2 pt-2 border-t">
+                      <p className="text-xs font-medium text-muted-foreground">External Resources:</p>
                       <div className="space-y-1">
                         {getResourceSuggestions(suggestion.skill, suggestion.learningType).slice(0, 2).map((resource, idx) => (
                           <a
@@ -258,7 +355,7 @@ export default function StudentLearningPage() {
                             href={resource.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
+                            className="flex items-center gap-2 text-xs text-blue-600 hover:underline"
                           >
                             <ExternalLink className="size-3" />
                             {resource.title}
@@ -272,6 +369,7 @@ export default function StudentLearningPage() {
                       disabled={completing === suggestion.id}
                       className="w-full"
                       variant="outline"
+                      size="sm"
                     >
                       {completing === suggestion.id ? (
                         <Spinner className="size-4" />
