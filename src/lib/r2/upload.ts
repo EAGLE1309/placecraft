@@ -26,6 +26,13 @@ export async function uploadToR2(
   path: string,
   contentType: string
 ): Promise<UploadResult> {
+  // Check if R2 is configured
+  if (!process.env.R2_ENDPOINT || !process.env.R2_ACCESS_KEY_ID || !process.env.R2_SECRET_ACCESS_KEY || !BUCKET_NAME) {
+    throw new Error(
+      "Storage (R2) is not configured. Please set R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_BUCKET_NAME environment variables."
+    );
+  }
+
   const fileId = uuidv4();
 
   const command = new PutObjectCommand({

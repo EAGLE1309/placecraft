@@ -110,16 +110,24 @@ export default function ResumeImprovePage() {
         if (res.status === 429) {
           setError(`Rate limit reached. Please try again in ${data.retryAfter || 60} seconds.`);
         } else {
-          setError(data.error || "Failed to improve resume.");
+          const errorMsg = data.error || "Failed to improve resume.";
+          const details = data.details ? `\n\n${data.details}` : "";
+          setError(`${errorMsg}${details}`);
         }
+        return;
+      }
+
+      // Verify we have a valid PDF URL before showing success
+      if (!data.pdfUrl) {
+        setError("Resume was improved but no download link was generated. Please try again.");
         return;
       }
 
       setImprovedResult({
         pdfUrl: data.pdfUrl,
-        improvementSummary: data.improvementSummary,
-        estimatedScore: data.estimatedScore,
-        originalScore: data.originalScore,
+        improvementSummary: data.improvementSummary || [],
+        estimatedScore: data.estimatedScore || 0,
+        originalScore: data.originalScore || 0,
       });
     } catch (err) {
       console.error("Failed to improve resume:", err);

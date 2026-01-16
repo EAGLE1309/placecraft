@@ -105,14 +105,14 @@ export async function POST(request: NextRequest) {
       pdfBuffer = await generatePDFFromHTML(htmlContent);
     } catch (pdfError) {
       console.error("[Resume Improve] PDF generation failed:", pdfError);
-      // Return improved data even if PDF generation fails
-      return NextResponse.json({
-        success: true,
-        pdfGenerated: false,
-        improvedData,
-        improvementSummary: improvedData.improvementSummary,
-        error: "PDF generation failed, but improved content is available.",
-      });
+      const errorMessage = pdfError instanceof Error ? pdfError.message : "Unknown PDF generation error";
+      return NextResponse.json(
+        {
+          error: `PDF generation failed: ${errorMessage}. Please ensure you have a stable connection and try again.`,
+          details: "The AI successfully improved your resume content, but we couldn't generate the PDF file."
+        },
+        { status: 500 }
+      );
     }
 
     // Step 4: Upload PDF to storage
@@ -124,14 +124,14 @@ export async function POST(request: NextRequest) {
       uploadResult = await uploadToR2(pdfBuffer, fileName, "application/pdf");
     } catch (uploadError) {
       console.error("[Resume Improve] Upload failed:", uploadError);
-      return NextResponse.json({
-        success: true,
-        pdfGenerated: true,
-        pdfUploaded: false,
-        improvedData,
-        improvementSummary: improvedData.improvementSummary,
-        error: "PDF generated but upload failed.",
-      });
+      const errorMessage = uploadError instanceof Error ? uploadError.message : "Unknown upload error";
+      return NextResponse.json(
+        {
+          error: `Failed to save the improved resume: ${errorMessage}. Please check your storage configuration and try again.`,
+          details: "The PDF was generated successfully but couldn't be uploaded to storage."
+        },
+        { status: 500 }
+      );
     }
 
     // Step 5: Store improved resume record
