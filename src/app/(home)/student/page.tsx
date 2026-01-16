@@ -12,7 +12,7 @@ import {
   getStudentStats,
   getEligibleDrivesForStudent,
   getApplicationsByStudent,
-  getLearningSuggestions
+  getLearningSuggestions,
 } from "@/lib/firebase/firestore";
 import { StudentProfile, PlacementDrive, Application, LearningSuggestion, StudentDashboardStats } from "@/types";
 import {
@@ -25,7 +25,8 @@ import {
   BookOpen,
   ArrowRight,
   Building2,
-  Calendar
+  Calendar,
+  Check
 } from "lucide-react";
 import Link from "next/link";
 import { toDate } from "@/lib/utils";
@@ -38,6 +39,7 @@ export default function StudentDashboardPage() {
   const [eligibleDrives, setEligibleDrives] = useState<PlacementDrive[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
   const [suggestions, setSuggestions] = useState<LearningSuggestion[]>([]);
+  const [appliedDriveIds, setAppliedDriveIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -56,6 +58,10 @@ export default function StudentDashboardPage() {
         setEligibleDrives(drivesData.slice(0, 3));
         setApplications(appsData.slice(0, 5));
         setSuggestions(suggestionsData.filter(s => !s.completed).slice(0, 3));
+
+        // Track which drives the student has already applied to
+        const appliedIds = new Set(appsData.map(app => app.driveId));
+        setAppliedDriveIds(appliedIds);
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
       } finally {
@@ -180,11 +186,18 @@ export default function StudentDashboardPage() {
                             {toDate(drive.applicationDeadline).toLocaleDateString()}
                           </p>
                         </div>
-                        <Link href={`/student/drives?driveId=${drive.id}`}>
-                          <Button size="sm" variant="outline">
-                            Apply
+                        {appliedDriveIds.has(drive.id) ? (
+                          <Button size="sm" variant="outline" disabled className="text-green-600 border-green-600">
+                            <Check className="size-4 mr-1" />
+                            Applied
                           </Button>
-                        </Link>
+                        ) : (
+                          <Link href={`/student/drives?driveId=${drive.id}`}>
+                            <Button size="sm" variant="outline">
+                              Apply
+                            </Button>
+                          </Link>
+                        )}
                       </div>
                     </div>
                   ))}

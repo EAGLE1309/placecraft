@@ -18,7 +18,9 @@ import {
   GraduationCap,
   Building,
   Calendar,
-  Briefcase
+  Briefcase,
+  Download,
+  ExternalLink
 } from "lucide-react";
 import { toDate } from "@/lib/utils";
 
@@ -246,7 +248,7 @@ export default function AdminStudentsPage() {
                 <div className="space-y-2">
                   <h4 className="font-medium">Resume</h4>
                   {selectedStudent.resumeFileId ? (
-                    <div className="p-4 border rounded-lg">
+                    <div className="p-4 border rounded-lg space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <FileText className="size-5 text-blue-600" />
@@ -257,6 +259,28 @@ export default function AdminStudentsPage() {
                           <p className="text-xs text-muted-foreground">Resume Score</p>
                         </div>
                       </div>
+                      {selectedStudent.resumeUrl && (
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => window.open(selectedStudent.resumeUrl, '_blank')}
+                          >
+                            <ExternalLink className="size-4 mr-1" />
+                            View Resume
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            asChild
+                          >
+                            <a href={selectedStudent.resumeUrl} download={`${selectedStudent.name}_Resume.pdf`}>
+                              <Download className="size-4 mr-1" />
+                              Download
+                            </a>
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <p className="text-muted-foreground">No resume uploaded</p>

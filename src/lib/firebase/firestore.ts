@@ -253,6 +253,11 @@ export async function updateDrive(
   }));
 }
 
+export async function deleteDrive(id: string): Promise<void> {
+  const docRef = doc(getDb(), COLLECTIONS.DRIVES, id);
+  await deleteDoc(docRef);
+}
+
 export async function getAllDrives(): Promise<PlacementDrive[]> {
   const drivesRef = collection(getDb(), COLLECTIONS.DRIVES);
   const q = query(drivesRef, orderBy("createdAt", "desc"));
