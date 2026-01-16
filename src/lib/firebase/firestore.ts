@@ -735,6 +735,24 @@ export async function setFinalResume(
   await batch.commit();
 }
 
+export async function deleteResumeHistory(
+  studentId: string,
+  historyId: string
+): Promise<void> {
+  const historyEntry = await getResumeHistoryById(historyId);
+  if (!historyEntry) throw new Error("Resume history not found");
+
+  if (historyEntry.studentId !== studentId) {
+    throw new Error("Unauthorized: Resume does not belong to this student");
+  }
+
+  if (historyEntry.isFinal) {
+    throw new Error("Cannot delete the final resume. Please set another resume as final first.");
+  }
+
+  await deleteDoc(doc(getDb(), COLLECTIONS.RESUME_HISTORY, historyId));
+}
+
 export async function getFinalResume(studentId: string): Promise<ResumeHistory | null> {
   const historyRef = collection(getDb(), COLLECTIONS.RESUME_HISTORY);
   const q = query(

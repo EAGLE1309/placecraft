@@ -17,6 +17,7 @@ import {
   Star,
   ExternalLink,
   AlertCircle,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -28,6 +29,7 @@ export default function ResumeHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [settingFinal, setSettingFinal] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
     if (studentProfile) {
@@ -90,6 +92,46 @@ export default function ResumeHistoryPage() {
     }
   };
 
+  const handleDelete = async (historyId: string, isFinal: boolean) => {
+    if (!studentProfile) return;
+
+    if (isFinal) {
+      setError("Cannot delete the final resume. Please set another resume as final first.");
+      return;
+    }
+
+    if (!confirm("Are you sure you want to delete this resume version? This action cannot be undone.")) {
+      return;
+    }
+
+    setDeleting(historyId);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/resume/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentId: studentProfile.id,
+          historyId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to delete resume");
+      }
+
+      await loadHistory();
+    } catch (err) {
+      console.error("Failed to delete resume:", err);
+      setError(err instanceof Error ? err.message : "Failed to delete resume");
+    } finally {
+      setDeleting(null);
+    }
+  };
+
   if (!studentProfile) {
     return (
       <ContentLayout title="Resume History">
@@ -102,19 +144,27 @@ export default function ResumeHistoryPage() {
 
   const formatDate = (timestamp: { toDate?: () => Date } | string | number) => {
     if (!timestamp) return "Unknown";
-    let date: Date;
-    if (typeof timestamp === 'object' && timestamp.toDate) {
-      date = timestamp.toDate();
-    } else {
-      date = new Date(timestamp as string | number);
+    try {
+      let date: Date;
+      if (typeof timestamp === 'object' && timestamp.toDate) {
+        date = timestamp.toDate();
+      } else {
+        date = new Date(timestamp as string | number);
+      }
+      if (isNaN(date.getTime())) {
+        return "Invalid Date";
+      }
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch (err) {
+      console.error("Date formatting error:", err);
+      return "Invalid Date";
     }
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
   };
 
   const getSourceBadge = (source?: string) => {
@@ -283,6 +333,24 @@ export default function ResumeHistoryPage() {
                             )}
                           </Button>
                         )}
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDelete(item.id, item.isFinal)}
+                          disabled={deleting === item.id}
+                        >
+                          {deleting === item.id ? (
+                            <>
+                              <Spinner className="size-4 mr-2" />
+                              Deleting...
+                            </>
+                          ) : (
+                            <>
+                              <Trash2 className="size-4 mr-2" />
+                              Delete
+                            </>
+                          )}
+                        </Button>
                       </div>
                     </div>
                   </div>

@@ -160,24 +160,30 @@ export default function RecruiterDashboardPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {drives.slice(0, 4).map((drive) => (
-                    <div key={String(drive.id)} className="flex items-center justify-between p-3 rounded-lg border">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-                          <Building2 className="size-5 text-blue-600" />
+                  {drives.slice(0, 4).map((drive) => {
+                    const role = typeof drive.role === 'string' ? drive.role : 'Unknown Role';
+                    const status = typeof drive.status === 'string' ? drive.status : 'draft';
+                    const appCount = typeof drive.applicationCount === 'number' ? drive.applicationCount : 0;
+
+                    return (
+                      <div key={String(drive.id)} className="flex items-center justify-between p-3 rounded-lg border">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                            <Building2 className="size-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <h4 className="font-medium">{role}</h4>
+                            <p className="text-sm text-muted-foreground">
+                              {appCount} applications
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <h4 className="font-medium">{(drive.role).toString()}</h4>
-                          <p className="text-sm text-muted-foreground">
-                            {(drive.applicationCount).toString()} applications
-                          </p>
-                        </div>
+                        <Badge variant={status === "published" ? "default" : "secondary"}>
+                          {status}
+                        </Badge>
                       </div>
-                      <Badge variant={drive.status === "published" ? "default" : "secondary"}>
-                        {(drive.status).toString()}
-                      </Badge>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
