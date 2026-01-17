@@ -51,22 +51,22 @@ export async function getOrGenerateSubjectWithRoadmap(
 ): Promise<{ subject: LearningSubject; cached: boolean }> {
   const normalizedName = normalizeSubjectName(skillName);
   const displayName = getDisplayName(skillName);
-  
+
   // Step 1: Check if subject exists
   let subject = await getSubjectByName(normalizedName);
-  
+
   if (subject) {
     // Subject exists, check if roadmap is cached
     if (subject.roadmap) {
       return { subject, cached: true };
     }
-    
+
     // Subject exists but no roadmap - generate it
     const roadmapResponse = await generateRoadmapForSubject(subject);
-    
+
     // Update subject with roadmap
     await updateSubjectRoadmap(subject.id, roadmapResponse.roadmap.overview);
-    
+
     return {
       subject: {
         ...subject,
@@ -75,11 +75,11 @@ export async function getOrGenerateSubjectWithRoadmap(
       cached: false,
     };
   }
-  
+
   // Step 2: Create new subject
   const difficulty = inferDifficulty(skillName, learningType);
   const hours = estimateHours(difficulty);
-  
+
   const input: CreateSubjectInput = {
     subjectName: normalizedName,
     displayName,
@@ -88,15 +88,15 @@ export async function getOrGenerateSubjectWithRoadmap(
     estimatedHours: hours,
     prerequisites: [],
   };
-  
+
   const { subject: newSubject } = await getOrCreateSubject(input);
-  
+
   // Step 3: Generate roadmap for new subject
   const roadmapResponse = await generateRoadmapForSubject(newSubject);
-  
+
   // Update subject with roadmap
   await updateSubjectRoadmap(newSubject.id, roadmapResponse.roadmap.overview);
-  
+
   return {
     subject: {
       ...newSubject,
@@ -125,21 +125,21 @@ export async function getOrGenerateChapters(
 ): Promise<{ chapters: LearningChapter[]; cached: boolean }> {
   // Step 1: Check if chapters already exist in DB
   const existingChapters = await getChaptersBySubjectId(subjectId);
-  
+
   if (existingChapters.length > 0) {
     return { chapters: existingChapters, cached: true };
   }
-  
+
   // Step 2: Get subject details
   const subject = await getSubjectById(subjectId);
   if (!subject) {
     throw new Error("Subject not found");
   }
-  
+
   // Step 3: Generate chapters using AI
   const prompt = createRoadmapPrompt(subject.displayName, subject.difficulty);
   const roadmapResponse = await generateLearningJSON<AIRoadmapResponse>(prompt);
-  
+
   // Step 4: Create chapter documents
   const chapterInputs: CreateChapterInput[] = roadmapResponse.chapters.map((ch) => ({
     subjectId,
@@ -149,17 +149,17 @@ export async function getOrGenerateChapters(
     description: ch.description,
     estimatedMinutes: ch.estimatedMinutes,
   }));
-  
+
   const chapters = await createChaptersBatch(chapterInputs);
-  
+
   // Step 5: Update subject metadata
   await updateSubjectChaptersMeta(subjectId, chapters.length);
-  
+
   // Also update roadmap if not already set
   if (!subject.roadmap) {
     await updateSubjectRoadmap(subjectId, roadmapResponse.roadmap.overview);
   }
-  
+
   return { chapters, cached: false };
 }
 
@@ -177,12 +177,12 @@ export async function getOrGenerateChapterOverview(
   if (!chapter) {
     throw new Error("Chapter not found");
   }
-  
+
   // Step 2: Check if overview is already cached
   if (chapter.overview && chapter.concepts && chapter.concepts.length > 0) {
     return { chapter, cached: true };
   }
-  
+
   // Step 3: Generate overview using AI
   const prompt = createChapterOverviewPrompt(
     chapter.subjectName,
@@ -190,14 +190,14 @@ export async function getOrGenerateChapterOverview(
     chapter.description
   );
   const overviewResponse = await generateLearningJSON<AIChapterOverview>(prompt);
-  
+
   // Step 4: Update chapter with generated content
   await updateChapterOverview(
     chapterId,
     overviewResponse.overview,
     overviewResponse.concepts
   );
-  
+
   return {
     chapter: {
       ...chapter,
@@ -221,13 +221,13 @@ export async function getOrGenerateChapterNotes(
   if (!chapter) {
     throw new Error("Chapter not found");
   }
-  
+
   // Step 2: Check if notes are already cached
   if (chapter.aiNotes) {
-    console.log("[Learning Service] Notes already cached for chapter:", chapterId , "\n" + chapter.aiNotes);
+    console.log("[Learning Service] Notes already cached for chapter:", chapterId, "\n" + chapter.aiNotes);
     return { notes: chapter.aiNotes, cached: true };
   }
-  
+
   // Step 3: Ensure we have concepts (needed for notes generation)
   let concepts = chapter.concepts;
   if (!concepts || concepts.length === 0) {
@@ -235,19 +235,45 @@ export async function getOrGenerateChapterNotes(
     const { chapter: updatedChapter } = await getOrGenerateChapterOverview(chapterId);
     concepts = updatedChapter.concepts || [];
   }
-  
-  // Step 4: Generate notes using AI
+
+  // Step 4: Generate notes using AI with retry mechanism
   const prompt = createStudyNotesPrompt(
     chapter.subjectName,
     chapter.title,
     concepts
   );
-  const notesResponse = await generateLearningJSON<AIStudyNotes>(prompt);
-  console.log("[Learning Service] Generated notes for chapter:", chapterId , "\n" + notesResponse.notes);
-  
+
+  let notesResponse: AIStudyNotes | undefined;
+  let lastError: Error | null = null;
+
+  // Try up to 3 times with exponential backoff
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      console.log(`[Learning Service] Generating notes attempt ${attempt}/3 for chapter:`, chapterId);
+      notesResponse = await generateLearningJSON<AIStudyNotes>(prompt);
+      console.log("[Learning Service] Generated notes for chapter:", chapterId, "\n" + notesResponse.notes);
+      break; // Success, exit retry loop
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("Unknown error");
+      console.error(`[Learning Service] Notes generation attempt ${attempt} failed:`, lastError);
+
+      if (attempt < 3) {
+        // Wait before retrying (exponential backoff: 1s, 2s)
+        const waitTime = Math.pow(2, attempt - 1) * 1000;
+        console.log(`[Learning Service] Waiting ${waitTime}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+    }
+  }
+
+  // If all attempts failed, throw the last error
+  if (!notesResponse) {
+    throw lastError || new Error("Failed to generate notes after multiple attempts");
+  }
+
   // Step 5: Update chapter with generated notes
   await updateChapterNotes(chapterId, notesResponse.notes);
-  
+
   return { notes: notesResponse.notes, cached: false };
 }
 
@@ -265,24 +291,24 @@ export async function getOrFetchChapterVideos(
   if (!chapter) {
     throw new Error("Chapter not found");
   }
-  
+
   // Step 2: Check if videos are already cached
   if (chapter.videos && chapter.videos.length > 0) {
     return { videos: chapter.videos, cached: true };
   }
-  
+
   // Step 3: Try to fetch videos from YouTube API
   const searchQuery = buildVideoSearchQuery(chapter.subjectName, chapter.title);
-  
+
   try {
     const videos = await searchYouTubeVideos(searchQuery, 5);
-    
+
     if (videos.length > 0) {
       // Step 4: Cache videos in chapter document
       await updateChapterVideos(chapterId, videos);
       return { videos, cached: false };
     }
-    
+
     // No videos found, return fallback URL
     return {
       videos: [],
@@ -323,11 +349,11 @@ export async function checkSubjectExists(skillName: string): Promise<{
   hasChapters: boolean;
 }> {
   const subject = await getSubjectByName(skillName);
-  
+
   if (!subject) {
     return { exists: false, hasRoadmap: false, hasChapters: false };
   }
-  
+
   return {
     exists: true,
     subject,

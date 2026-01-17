@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 import { LearningChapter, LearningSubjectProgress, YouTubeVideo } from "@/types/learning";
 import { StudentProfile } from "@/types";
 import {
@@ -510,9 +511,10 @@ export default function ChapterPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                    {notes}
-                  </div>
+                  <MarkdownRenderer
+                    content={notes}
+                    className="text-sm leading-relaxed"
+                  />
                 </CardContent>
               </Card>
             ) : (

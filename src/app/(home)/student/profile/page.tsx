@@ -152,7 +152,7 @@ export default function StudentProfilePage() {
   const removeSkill = (skill: string) => {
     // Remove from manual skills
     setSkills(skills.filter((s) => s !== skill));
-    
+
     // If it's a resume-extracted skill, we need to remove it from the profile
     if (studentProfile?.resumeExtractedSkills?.includes(skill)) {
       const updatedResumeSkills = studentProfile.resumeExtractedSkills.filter((s) => s !== skill);
@@ -184,7 +184,7 @@ export default function StudentProfilePage() {
   const removeExperience = (id: string) => {
     // Remove from manual experiences
     setExperiences(experiences.filter((exp) => exp.id !== id));
-    
+
     // If it's a resume-extracted experience, remove it from the profile
     if (studentProfile?.resumeExtractedExperience?.some((exp) => exp.id === id)) {
       const updatedResumeExp = studentProfile.resumeExtractedExperience.filter((exp) => exp.id !== id);
@@ -433,8 +433,8 @@ export default function StudentProfilePage() {
                   <div className="p-4 border rounded-lg bg-muted/30">
                     <div className="flex flex-wrap gap-2">
                       {mergedSkills.map((mergedSkill) => (
-                        <Badge 
-                          key={typeof mergedSkill.skill === 'string' ? mergedSkill.skill : String(mergedSkill.skill)} 
+                        <Badge
+                          key={typeof mergedSkill.skill === 'string' ? mergedSkill.skill : String(mergedSkill.skill)}
                           variant={mergedSkill.source === "resume" ? "secondary" : "default"}
                           className="px-3 py-1.5 text-sm font-medium gap-2"
                         >

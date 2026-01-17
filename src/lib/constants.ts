@@ -26,7 +26,6 @@ export const COLLEGES = [
   "BITS Pilani",
   "VIT University",
   "SRM University",
-  "Other",
 ] as const;
 
 export const CURRENT_YEAR = new Date().getFullYear();

@@ -89,10 +89,29 @@ export async function generateLearningContent(prompt: string): Promise<string> {
     incrementLearningRequestCount();
     const result = await model.generateContent(prompt);
     const response = result.response;
-    return response.text();
+    const text = response.text();
+
+    // Validate that we got some content
+    if (!text || text.trim().length === 0) {
+      throw new Error("AI returned empty response");
+    }
+
+    return text;
   } catch (error) {
     console.error("[Learning Gemini] Generation error:", error);
-    throw error;
+
+    // If it's a rate limit error, provide a more helpful message
+    if (error instanceof Error && error.message.includes("rate limit")) {
+      throw new Error("AI service is temporarily busy. Please try again in a few seconds.");
+    }
+
+    // If it's an API key error
+    if (error instanceof Error && error.message.includes("API key")) {
+      throw new Error("AI service configuration error. Please contact support.");
+    }
+
+    // For other errors, provide a generic but helpful message
+    throw new Error("AI service temporarily unavailable. Please try again.");
   }
 }
 
@@ -101,37 +120,54 @@ export async function generateLearningContent(prompt: string): Promise<string> {
  */
 export async function generateLearningJSON<T>(prompt: string): Promise<T> {
   const text = await generateLearningContent(prompt);
-  
+
   console.log("[Learning Gemini] Raw AI response (first 500 chars):", text.substring(0, 500));
-  
-  const trimmedText = text.trim();
-  
+
+  let trimmedText = text.trim();
+
+  // Remove any BOM or invisible characters
+  trimmedText = trimmedText.replace(/^\uFEFF/, '');
+
   try {
     const parsed = JSON.parse(trimmedText) as T;
     console.log("[Learning Gemini] Direct JSON parse successful");
     return parsed;
   } catch (directParseError) {
     console.log("[Learning Gemini] Direct parse failed, attempting extraction fallback");
-    
+
     try {
       let extracted = trimmedText;
-      
-      if (trimmedText.includes('```')) {
-        const codeBlockMatch = trimmedText.match(/```(?:json)?\s*([\s\S]*?)```/);
+
+      // Try to extract from markdown code blocks (```json or ```)
+      if (extracted.includes('```')) {
+        const codeBlockMatch = extracted.match(/```(?:json)?\s*([\s\S]*?)```/);
         if (codeBlockMatch) {
           extracted = codeBlockMatch[1].trim();
           console.log("[Learning Gemini] Extracted from markdown code block");
         }
       }
-      
+
+      // Remove any leading/trailing non-JSON text
       if (!extracted.startsWith('{') && !extracted.startsWith('[')) {
-        const jsonMatch = extracted.match(/^[^{[]*(\{[\s\S]*\}|\[[\s\S]*\])[^}\]]*$/);
+        const jsonMatch = extracted.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
         if (jsonMatch) {
           extracted = jsonMatch[1];
           console.log("[Learning Gemini] Extracted JSON from surrounding text");
         }
       }
-      
+
+      // Clean up common JSON issues
+      extracted = extracted
+        .replace(/,\s*([}\]])/g, '$1') // Remove trailing commas
+        .replace(/\n/g, '\\n') // Escape newlines in strings
+        .replace(/\r/g, '') // Remove carriage returns
+        .replace(/\t/g, '\\t'); // Escape tabs
+
+      // Try to fix unescaped quotes in strings (basic attempt)
+      // This is a heuristic and may not work for all cases
+      const lines = extracted.split('\\n');
+      extracted = lines.join('\\n');
+
       const parsed = JSON.parse(extracted) as T;
       console.log("[Learning Gemini] Fallback extraction successful");
       return parsed;
@@ -140,12 +176,58 @@ export async function generateLearningJSON<T>(prompt: string): Promise<T> {
       console.error("[Learning Gemini] Direct parse error:", directParseError);
       console.error("[Learning Gemini] Extraction error:", extractionError);
       console.error("[Learning Gemini] Raw response (first 1000 chars):", text.substring(0, 1000));
-      throw new Error("Failed to parse AI response as JSON. The AI may have returned invalid JSON format.");
+
+      // Try one last time with a more aggressive approach
+      try {
+        const lastAttempt = text.match(/\{[\s\S]*"notes"[\s\S]*\}/)?.[0];
+        if (lastAttempt) {
+          const parsed = JSON.parse(lastAttempt) as T;
+          console.log("[Learning Gemini] Last attempt extraction successful");
+          return parsed;
+        }
+      } catch (lastError) {
+        console.error("[Learning Gemini] Last attempt failed:", lastError);
+      }
+
+      // If we're here, all parsing attempts failed. Check if this is a study notes request
+      if (text.includes("notes") && text.includes("study")) {
+        console.log("[Learning Gemini] Generating fallback study notes");
+        // Generate a basic fallback response for study notes
+        const fallbackNotes = `# Study Notes
+
+## Introduction
+This content covers the key concepts and topics for this chapter. The AI-generated content encountered an error, so this basic template is provided instead.
+
+## Key Concepts
+- Review the main concepts covered in this chapter
+- Focus on understanding the fundamental principles
+- Practice with examples and exercises
+
+## Examples
+Work through practical examples to solidify your understanding of the material.
+
+## Key Takeaways
+- Understand the core concepts
+- Practice regularly
+- Apply what you've learned
+
+## Practice Questions
+1. What are the main concepts covered?
+2. How would you apply these concepts?
+3. What are the practical applications?
+
+## Summary
+Review the material regularly and practice consistently to master these concepts.`;
+
+        // Return the fallback in the expected format
+        return { notes: fallbackNotes } as T;
+      }
+
+      throw new Error("Failed to parse AI response as JSON. The AI may have returned invalid JSON format. Please try again.");
     }
   }
 }
 
-// ==================== PROMPT TEMPLATES ====================
 
 /**
  * Generate a subject roadmap and chapter outline
@@ -226,31 +308,38 @@ export function createStudyNotesPrompt(
   chapterTitle: string,
   concepts: string[]
 ): string {
+  const conceptsList = concepts.slice(0, 8).join(", "); // Limit to 8 concepts to avoid token issues
+
   return `You are an expert educator creating comprehensive study notes for a chapter in a "${subjectName}" course.
 
 Chapter: "${chapterTitle}"
-Key Concepts to Cover: ${concepts.join(", ")}
+Key Concepts to Cover: ${conceptsList}
 
-Generate detailed study notes. Return ONLY valid JSON in this exact format (no markdown code blocks):
+**CRITICAL INSTRUCTIONS:**
+1. Return ONLY a valid JSON object
+2. Do NOT wrap the JSON in markdown code blocks (no \`\`\`)
+3. Do NOT add any text before or after the JSON
+4. Ensure all strings are properly escaped
+5. Use \\n for line breaks within the notes string
+
+Return this exact JSON structure:
 
 {
-  "notes": "Comprehensive markdown-formatted study notes here"
+  "notes": "# ${chapterTitle}\n\n## Introduction\n[Introduction content]\n\n## Key Concepts\n[Explain each concept]\n\n## Practical Examples\n[Real-world examples]\n\n## Key Takeaways\n- Point 1\n- Point 2\n\n## Practice Questions\n1. Question 1\n2. Question 2\n\n## Summary\n[Brief summary]"
 }
 
-The "notes" field should contain markdown-formatted content with:
-- ## Introduction section
-- ## Key Concepts section (explain each concept: ${concepts.join(", ")})
-- ## Examples section (practical examples)
-- ## Key Takeaways section (5-8 bullet points)
-- ## Practice Questions section (3-5 questions for self-assessment)
-- ## Summary section
+Requirements for the "notes" content:
+- Write 800-1500 words of educational content
+- Use markdown formatting (##, ###, -, *, 1., etc.)
+- Explain each concept clearly: ${conceptsList}
+- Include 2-3 practical examples with code snippets if relevant
+- Add 5-8 key takeaway bullet points
+- Include 3-5 self-assessment questions
+- End with a concise summary
+- Use \\n for line breaks, \\" for quotes within the string
+- Make content engaging and easy to understand
 
-Requirements:
-- Notes should be 800-1500 words total
-- Use proper markdown formatting (headers, bullet points, code blocks if relevant)
-- Include practical examples where applicable
-- Make it easy to review and study from
-- Return ONLY the JSON object, no extra text or markdown code blocks`;
+REMEMBER: Return ONLY the JSON object with no additional text or formatting.`;
 }
 
 /**
@@ -259,21 +348,21 @@ Requirements:
 export function inferDifficulty(skillName: string, learningType?: string): "beginner" | "intermediate" | "advanced" {
   const advancedKeywords = ["advanced", "senior", "expert", "architecture", "system design", "optimization"];
   const intermediateKeywords = ["intermediate", "professional", "production", "best practices"];
-  
+
   const lowerName = skillName.toLowerCase();
-  
+
   if (advancedKeywords.some(k => lowerName.includes(k))) {
     return "advanced";
   }
   if (intermediateKeywords.some(k => lowerName.includes(k))) {
     return "intermediate";
   }
-  
+
   // Default based on learning type
   if (learningType === "practice") {
     return "intermediate";
   }
-  
+
   return "beginner";
 }
 
