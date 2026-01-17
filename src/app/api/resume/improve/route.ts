@@ -4,12 +4,12 @@ import {
   getResumeAnalysisById,
   createImprovedResume,
   createResumeHistory,
-  getStudentById,
 } from "@/lib/firebase/firestore";
 import { improveResume, getQuotaInfo, cleanUndefinedValues } from "@/lib/ai/resume-ai";
 import { uploadToR2 } from "@/lib/r2/upload";
 import { generatePDFFromHTML } from "@/lib/pdf/generate-pdf";
-import { ExtractedResumeData, ImprovedResumeData } from "@/types/resume";
+import { generateResumeHTML } from "@/lib/pdf/resume-html";
+import { ImprovedResumeData } from "@/types/resume";
 import { verifyAuth, requireAuth } from "@/lib/firebase/auth-api";
 
 /**
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     if (authError) return authError;
 
     const body = await request.json();
-    const { studentId, analysisId, targetRole, focusAreas } = body;
+    const { studentId, analysisId, targetRole } = body;
 
     if (!studentId) {
       return NextResponse.json(
@@ -116,7 +116,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 4: Upload PDF to storage
-    const student = await getStudentById(studentId);
     const fileName = `resumes/${studentId}/${Date.now()}_improved_${improvedData.personalInfo.name?.replace(/\s+/g, "_") || "resume"}.pdf`;
 
     let uploadResult;
